@@ -262,9 +262,93 @@ router.post('/messages/read', useDB, authenticate, async (req, res) => {
 });
 
 // --- ADMIN ---
+router.get('/admin/stats', useDB, authenticate, async (req, res) => {
+  const userCount = await User.countDocuments();
+  const chatCount = await Chat.countDocuments();
+  const messageCount = await Message.countDocuments();
+  const reportCount = await Report.countDocuments({ status: 'pending' });
+  res.json({ totalUsers: userCount, totalChats: chatCount, totalMessages: messageCount, pendingReports: reportCount });
+});
+
+router.get('/admin/reports', useDB, authenticate, async (req, res) => {
+  const reports = await Report.find({}).sort({ time: -1 });
+  res.json(reports);
+});
+
 router.get('/admin/users', useDB, authenticate, async (req, res) => {
   const users = await User.find({});
   res.json(users);
+});
+
+router.post('/admin/users/:userId/:action', useDB, authenticate, async (req, res) => {
+  const { userId, action } = req.params;
+  const isAdmin = ADMINS.includes(req.user.email);
+  if (!isAdmin) return res.sendStatus(403);
+
+  if (action === 'block') {
+    await User.findOneAndUpdate({ id: userId }, { isBlockedByMod: true });
+  } else if (action === 'unblock') {
+    await User.findOneAndUpdate({ id: userId }, { isBlockedByMod: false });
+  }
+  res.json({ status: 'ok' });
+});
+
+router.post('/admin/promote', useDB, authenticate, async (req, res) => {
+  const { username, type, value } = req.body;
+  const isAdmin = ADMINS.includes(req.user.email);
+  if (!isAdmin) return res.sendStatus(403);
+
+  const update = {};
+  if (type === 'beta') update.isBetaTester = value;
+  else {
+    update.isModerator = true;
+    update.isOfficial = true;
+  }
+
+  const user = await User.findOneAndUpdate({ username }, { $set: update }, { new: true });
+  if (user) res.json(user);
+  else res.status(404).json({ message: 'User not found' });
+});
+
+router.post('/admin/reports/:reportId/action', useDB, authenticate, async (req, res) => {
+  const { reportId } = req.params;
+  const { action } = req.body;
+  const isAdmin = ADMINS.includes(req.user.email);
+  if (!isAdmin) return res.sendStatus(403);
+
+  const report = await Report.findOne({ id: reportId });
+  if (!report) return res.status(404).json({ message: 'Report not found' });
+
+  if (action === 'block') {
+    await User.findOneAndUpdate({ id: report.targetId }, { isBlockedByMod: true });
+    report.status = 'blocked';
+  } else if (action === 'reject') {
+    report.status = 'rejected';
+  }
+  
+  await report.save();
+  res.json({ status: 'ok' });
+});
+
+// --- REPORTS ---
+router.post('/reports', useDB, authenticate, async (req, res) => {
+  const { targetId, reason, messageId } = req.body;
+  const target = await User.findOne({ id: targetId });
+  const reporter = await User.findOne({ id: req.user.id });
+  
+  const newReport = new Report({
+    id: Date.now().toString(),
+    reporterId: req.user.id,
+    reporterName: reporter ? `${reporter.name} ${reporter.surname || ''}` : 'Unknown',
+    targetId,
+    targetName: target ? `${target.name} ${target.surname || ''}` : 'Unknown',
+    reason,
+    reportedMessage: messageId,
+    time: new Date()
+  });
+  
+  await newReport.save();
+  res.json({ status: 'ok' });
 });
 
 router.get('/hello', (req, res) => res.json({ message: "API is working!" }));
