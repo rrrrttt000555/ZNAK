@@ -1,4 +1,4 @@
-const API_URL = ''; // На Netlify API будет на том же домене
+const API_URL = window.location.origin; // Автоматически берем адрес текущего сайта
 
 let currentUser = null;
 let translations = {
@@ -134,12 +134,18 @@ async function sendCode() {
     
     setLoading('send-code-btn', true);
     try {
+        console.log(`Sending code to ${email} via ${API_URL}/api/auth/send-code`);
         const res = await fetch(`${API_URL}/api/auth/send-code`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ email })
         });
+        
         const data = await res.json();
+        
+        if (!res.ok) {
+            throw new Error(data.message || `Ошибка сервера: ${res.status}`);
+        }
         
         showToast(`Код отправлен! Проверьте почту.`);
         console.log(`Debug code: ${data.debugCode}`);
@@ -147,7 +153,8 @@ async function sendCode() {
         elements.emailStep.classList.add('hidden');
         elements.codeStep.classList.remove('hidden');
     } catch (e) {
-        alert('Ошибка при отправке кода');
+        console.error('Send code error:', e);
+        alert(`Ошибка при отправке кода: ${e.message}`);
     } finally {
         setLoading('send-code-btn', false);
     }
