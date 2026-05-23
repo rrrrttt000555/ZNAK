@@ -144,7 +144,8 @@ async function sendCode() {
         const data = await res.json();
         
         if (!res.ok) {
-            throw new Error(data.message || `Ошибка сервера: ${res.status}`);
+            const detail = data.error ? `: ${data.error}` : '';
+            throw new Error((data.message || `Ошибка сервера: ${res.status}`) + detail);
         }
         
         showToast(`Код отправлен! Проверьте почту.`);
@@ -255,7 +256,7 @@ function renderAccounts() {
     list.innerHTML = accounts.map((acc, index) => `
         <div class="setting-item ${acc.user.id === currentUser.id ? 'active-account' : ''}" onclick="switchAccount(${index})">
             <div style="display: flex; align-items: center; gap: 10px;">
-                <div class="chat-avatar" style="width: 32px; height: 32px; font-size: 14px;">${acc.user.avatar || acc.user.name[0]}</div>
+                <div class="chat-avatar" style="width: 32px; height: 32px; font-size: 14px;">${acc.user.avatar || (acc.user.name ? acc.user.name[0] : '?')}</div>
                 <span>${acc.user.name} ${acc.user.surname || ''}</span>
             </div>
             ${acc.user.id === currentUser.id ? '<i class="fas fa-check" style="color: var(--primary-color)"></i>' : ''}
@@ -424,7 +425,7 @@ async function renderChatList() {
         return `
         <div class="chat-item ${activeChatId === chat.id ? 'active' : ''}" onclick="selectChat('${chat.id}', ${chat.isTemp || false})">
             <div class="chat-avatar">
-                ${chat.avatar || chat.name[0]}
+                ${chat.avatar || (chat.name ? chat.name[0] : '?')}
                 ${onlineStatus}
             </div>
             <div class="chat-info-preview">
@@ -458,12 +459,6 @@ function showToast(message) {
 }
 
 async function selectChat(chatId, isTemp = false) {
-    // Technical maintenance for znakAI
-    if (chatId === 'znakAI') {
-        showToast("На данный момент, znakAI на техническом осмотре!");
-        return;
-    }
-
     lastMessagesJson = ""; // Сбрасываем кэш сообщений при смене чата
     replyToMsg = null;
     forwardFromMsg = null;
@@ -500,7 +495,7 @@ async function selectChat(chatId, isTemp = false) {
     const activeAvatar = document.getElementById('active-chat-avatar');
     
     // Force correct name for znakAI
-    const chatName = chat.id === 'znakAI' ? 'znakAI' : chat.name;
+    const chatName = chat.id === 'znakAI' ? 'znakAI' : (chat.name || 'Chat');
     if (activeName) activeName.innerText = chatName;
     if (activeAvatar) activeAvatar.innerText = chat.avatar || chatName[0];
     
@@ -522,7 +517,7 @@ async function selectChat(chatId, isTemp = false) {
     
     // In private chats, find the other user's ID
     const otherUserId = (chat.type === 'private' || chat.type === 'bot') ? chat.members.find(m => m !== currentUser?.id) : null;
-    const isBlocked = otherUserId && currentUser?.blockedUsers && currentUser.blockedUsers.includes(otherUserId);
+    const isBlocked = otherUserId && currentUser?.blockedUsers?.includes(otherUserId);
     
     if (isBlocked) {
         if (chatFooter) chatFooter.classList.add('hidden');
@@ -815,7 +810,10 @@ function showForwardList(msg) {
     forwardFromMsg = { senderName: msg.senderId === currentUser.id ? 'Вы' : 'Собеседник', text: msg.text || 'Файл' };
     const modal = document.getElementById('forward-modal');
     const list = document.getElementById('forward-chat-list');
-    list.innerHTML = chats.map(chat => `<div class="chat-item" onclick="forwardToChat('${chat.id}')"><div class="chat-avatar">${chat.avatar || chat.name[0]}</div><div class="chat-name">${chat.name}</div></div>`).join('');
+    list.innerHTML = chats.map(chat => {
+        const chatName = chat.name || 'Chat';
+        return `<div class="chat-item" onclick="forwardToChat('${chat.id}')"><div class="chat-avatar">${chat.avatar || chatName[0]}</div><div class="chat-name">${chatName}</div></div>`;
+    }).join('');
     modal.classList.remove('hidden');
 }
 
@@ -1018,7 +1016,7 @@ function applyUserSettings(user) {
     if (bioEl) bioEl.innerText = user.bio || 'Нет информации';
     
     const avatarEl = document.getElementById('settings-avatar');
-    if (avatarEl) avatarEl.innerText = user.avatar || user.name[0];
+    if (avatarEl) avatarEl.innerText = user.avatar || (user.name ? user.name[0] : '?');
     
     // Update sidebar items manually if they don't use data-t
     const profileText = document.querySelector('#drawer-profile span');
@@ -1057,7 +1055,7 @@ function applyUserSettings(user) {
     // Admin drawer item
     const adminDrawer = document.getElementById('drawer-admin');
     if (adminDrawer) {
-        if (user.isModerator || user.isBetaTester) adminDrawer.classList.remove('hidden');
+        if (user.isModerator) adminDrawer.classList.remove('hidden');
         else adminDrawer.classList.add('hidden');
     }
 
@@ -1077,7 +1075,7 @@ async function renderGroupMembers(chat) {
         list.innerHTML = '<h4>Участники</h4>' + members.map(m => `
             <div class="setting-item" onclick="window.showUserProfile('${m.id}')">
                 <div style="display: flex; align-items: center; gap: 10px;">
-                    <div class="chat-avatar" style="width: 32px; height: 32px; font-size: 14px;">${m.avatar || m.name[0]}</div>
+                    <div class="chat-avatar" style="width: 32px; height: 32px; font-size: 14px;">${m.avatar || (m.name ? m.name[0] : '?')}</div>
                     <span>${m.name} ${m.surname || ''} ${m.id === chat.ownerId ? '<small>(Владелец)</small>' : ''}</span>
                 </div>
             </div>
@@ -1107,7 +1105,7 @@ function openAddMember(chat) {
             const users = await res.json();
             results.innerHTML = users.map(u => `
                 <div class="chat-item" onclick="addMemberToGroup('${chat.id}', '${u.id}')">
-                    <div class="chat-avatar">${u.avatar || u.name[0]}</div>
+                    <div class="chat-avatar">${u.avatar || (u.name ? u.name[0] : '?')}</div>
                     <div class="chat-info-preview">
                         <span class="chat-name">${u.name} ${u.surname || ''}</span>
                         <div class="chat-last-msg">${u.username || ''}</div>
@@ -1230,12 +1228,15 @@ async function showUserProfile(userId) {
         if (botChat) return showChatInfo(botChat);
     }
     const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/admin/users`, { headers: { 'Authorization': `Bearer ${token}` } });
-    if (!res.ok) return;
+    const res = await fetch(`${API_URL}/api/users/${userId}`, { headers: { 'Authorization': `Bearer ${token}` } });
     
-    const users = await res.json();
-    const user = users.find(u => u.id === userId);
-    if (!user) return;
+    let user;
+    if (res.ok) {
+        user = await res.json();
+    } else {
+        // Fallback for missing user
+        user = { id: userId, name: 'Пользователь', avatar: '👤', isBetaTester: true };
+    }
 
     const infoName = document.getElementById('info-name');
     const infoDesc = document.getElementById('info-description');
@@ -1247,9 +1248,10 @@ async function showUserProfile(userId) {
     const modBadge = user.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
     const betaBadge = user.isBetaTester ? '<i class="fas fa-check-circle beta-badge" style="color: #9c27b0"></i>' : '';
     
-    infoName.innerHTML = `${user.name} ${user.surname || ''} ${modBadge}${betaBadge}`;
+    const userName = user.name || 'Пользователь';
+    infoName.innerHTML = `${userName} ${user.surname || ''} ${modBadge}${betaBadge}`;
     document.getElementById('info-modal-title').innerText = 'Профиль';
-    infoAvatar.innerText = user.avatar || user.name[0];
+    infoAvatar.innerText = user.avatar || userName[0];
     infoStatus.innerText = formatStatus(user.lastSeen, user.id);
     
     let description = '';
@@ -1275,7 +1277,7 @@ async function showUserProfile(userId) {
     // Block button logic
     const blockBtn = document.getElementById('block-user-btn');
     const reportBtn = document.getElementById('report-user-btn');
-    const isBlocked = currentUser.blockedUsers && currentUser.blockedUsers.includes(user.id);
+    const isBlocked = currentUser?.blockedUsers?.includes(user.id);
     
     if (blockBtn) {
         if (user.id === 'znakAI' || user.id === '1779451744698') {
@@ -1325,9 +1327,10 @@ async function showChatInfo(chat) {
     const modBadge = (targetUser && targetUser.isOfficial) ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
     const betaBadge = (targetUser && targetUser.isBetaTester) ? '<i class="fas fa-check-circle beta-badge" style="color: #9c27b0"></i>' : '';
     
-    infoName.innerHTML = `${chat.name} ${modBadge}${betaBadge}`;
+    const chatName = chat.name || 'Chat';
+    infoName.innerHTML = `${chatName} ${modBadge}${betaBadge}`;
     document.getElementById('info-modal-title').innerText = (chat.type === 'group' || chat.type === 'channel') ? (chat.type === 'group' ? 'О группе' : 'О канале') : 'Профиль';
-    infoAvatar.innerText = chat.avatar || chat.name[0];
+    infoAvatar.innerText = chat.avatar || chatName[0];
     
     if (chat.type === 'private' && targetUser) {
         infoStatus.innerText = formatStatus(targetUser.lastSeen, targetUser.id);
@@ -1382,7 +1385,7 @@ async function showChatInfo(chat) {
         if (targetUser) {
             const blockBtn = document.getElementById('block-user-btn');
             const reportBtn = document.getElementById('report-user-btn');
-            const isBlocked = currentUser.blockedUsers && currentUser.blockedUsers.includes(targetUser.id);
+            const isBlocked = currentUser?.blockedUsers?.includes(targetUser.id);
             
             if (blockBtn) {
                 if (targetUser.id === 'znakAI' || targetUser.id === '1779451744698') {
