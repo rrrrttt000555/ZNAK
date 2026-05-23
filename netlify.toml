@@ -2,10 +2,6 @@
   publish = "public"
   functions = "functions"
 
-[functions]
-  directory = "functions"
-  node_bundle = true
-
 [[redirects]]
   from = "/api/*"
   to = "/.netlify/functions/api/:splat"
