@@ -65,10 +65,8 @@ let cachedDb = null;
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
   if (!MONGODB_URI) throw new Error('MONGODB_URI is missing');
-  
-  console.log("Connecting to MongoDB...");
   cachedDb = await mongoose.connect(MONGODB_URI, { 
-    serverSelectionTimeoutMS: 5000, // Ждем максимум 5 секунд
+    serverSelectionTimeoutMS: 5000,
     connectTimeoutMS: 10000 
   });
   return cachedDb;
@@ -79,70 +77,85 @@ router.get('/hello', (req, res) => res.json({ message: "API is working!", mongoS
 router.post('/auth/send-code', async (req, res) => {
   const { email } = req.body;
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  await connectToDatabase();
-  await AuthCode.findOneAndUpdate({ email }, { code }, { upsert: true });
   
-  const transporter = nodemailer.createTransport({
-    host: 'smtp.gmail.com', port: 465, secure: true,
-    auth: { user: 'ghhtu6u7@gmail.com', pass: 'ikph notx bnvb avgf' }
-  });
-
   try {
-    await transporter.sendMail({
-      from: '"ZNAK Messenger" <ghhtu6u7@gmail.com>', to: email,
-      subject: "Ваш код ZNAK", text: `Код: ${code}`
+    await connectToDatabase();
+    await AuthCode.findOneAndUpdate({ email }, { code }, { upsert: true });
+    
+    const transporter = nodemailer.createTransport({
+      host: 'smtp.gmail.com', port: 465, secure: true,
+      auth: { user: 'ghhtu6u7@gmail.com', pass: 'ikph notx bnvb avgf' }
     });
-    res.json({ message: 'Code sent', debugCode: code });
-  } catch (error) {
-    res.json({ message: 'Error', debugCode: code, error: error.message });
+
+    try {
+      await transporter.sendMail({
+        from: '"ZNAK Messenger" <ghhtu6u7@gmail.com>', to: email,
+        subject: "Ваш код ZNAK", text: `Код: ${code}`
+      });
+      res.json({ message: 'Code sent', debugCode: code });
+    } catch (mailError) {
+      res.json({ message: 'Code generated (Mail failed)', debugCode: code, error: mailError.message });
+    }
+  } catch (dbError) {
+    res.status(503).json({ message: 'Database connection failed', error: dbError.message });
   }
 });
 
 router.post('/auth/verify', async (req, res) => {
   const { email, code } = req.body;
-  await connectToDatabase();
-  const auth = await AuthCode.findOne({ email, code });
-  if (auth) {
-    let user = await User.findOne({ email });
-    if (!user) return res.json({ status: 'new_user', email });
-    const token = jwt.sign({ id: user.id }, SECRET_KEY);
-    res.json({ status: 'ok', token, user });
-  } else {
-    res.status(400).json({ message: 'Invalid code' });
-  }
+  try {
+    await connectToDatabase();
+    const auth = await AuthCode.findOne({ email, code });
+    if (auth) {
+      let user = await User.findOne({ email });
+      if (!user) return res.json({ status: 'new_user', email });
+      const token = jwt.sign({ id: user.id }, SECRET_KEY);
+      res.json({ status: 'ok', token, user });
+    } else {
+      res.status(400).json({ message: 'Invalid code' });
+    }
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/auth/register', async (req, res) => {
   const { email, name, surname } = req.body;
-  await connectToDatabase();
-  const newUser = new User({ id: Date.now().toString(), email, name, surname, avatar: name ? name[0] : '?' });
-  await newUser.save();
-  const token = jwt.sign({ id: newUser.id }, SECRET_KEY);
-  res.json({ status: 'ok', token, user: newUser });
+  try {
+    await connectToDatabase();
+    const newUser = new User({ id: Date.now().toString(), email, name, surname, avatar: name ? name[0] : '?' });
+    await newUser.save();
+    const token = jwt.sign({ id: newUser.id }, SECRET_KEY);
+    res.json({ status: 'ok', token, user: newUser });
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/chats', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
-  await connectToDatabase();
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const chats = await Chat.find({ members: decoded.id });
-  res.json(chats);
+  try {
+    await connectToDatabase();
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const chats = await Chat.find({ members: decoded.id });
+    res.json(chats);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.get('/messages/:chatId', async (req, res) => {
-  await connectToDatabase();
-  const messages = await Message.find({ chatId: req.params.chatId }).sort({ time: 1 });
-  res.json(messages);
+  try {
+    await connectToDatabase();
+    const messages = await Message.find({ chatId: req.params.chatId }).sort({ time: 1 });
+    res.json(messages);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 router.post('/messages', async (req, res) => {
   const { chatId, text, senderId } = req.body;
-  await connectToDatabase();
-  const msg = new Message({ id: Date.now().toString(), chatId, senderId, text });
-  await msg.save();
-  res.json(msg);
+  try {
+    await connectToDatabase();
+    const msg = new Message({ id: Date.now().toString(), chatId, senderId, text });
+    await msg.save();
+    res.json(msg);
+  } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
 app.use('/.netlify/functions/api', router);
