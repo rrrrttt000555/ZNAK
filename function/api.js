@@ -7,6 +7,8 @@ import nodemailer from 'nodemailer';
 import serverless from 'serverless-http';
 
 const app = express();
+const router = express.Router(); // Используем роутер для гибкости путей
+
 const SECRET_KEY = process.env.SECRET_KEY || 'znak_secret_key';
 const MONGODB_URI = process.env.MONGODB_URI;
 
@@ -14,7 +16,7 @@ app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
 
-// MongoDB Schemas (same as server.js)
+// MongoDB Schemas
 const userSchema = new mongoose.Schema({
   id: { type: String, index: true },
   email: { type: String, unique: true, index: true },
@@ -61,45 +63,39 @@ const messageSchema = new mongoose.Schema({
   isEdited: { type: Boolean, default: false }
 });
 
-const reportSchema = new mongoose.Schema({
-  id: String, reporterId: String, reporterName: String, targetId: String, targetName: String, reason: String, reportedMessage: String, time: { type: Date, default: Date.now }, status: { type: String, default: 'pending' }
-});
-
 const authCodeSchema = new mongoose.Schema({
   email: String, code: String, createdAt: { type: Date, expires: '10m', default: Date.now }
 });
 
-const scheduleSchema = new mongoose.Schema({ day: String, tasks: [String] });
-
 const User = mongoose.models.User || mongoose.model('User', userSchema);
 const Chat = mongoose.models.Chat || mongoose.model('Chat', chatSchema);
 const Message = mongoose.models.Message || mongoose.model('Message', messageSchema);
-const Report = mongoose.models.Report || mongoose.model('Report', reportSchema);
 const AuthCode = mongoose.models.AuthCode || mongoose.model('AuthCode', authCodeSchema);
-const Schedule = mongoose.models.Schedule || mongoose.model('Schedule', scheduleSchema);
 
 // Connection helper
 let cachedDb = null;
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
-  mongoose.set('strictQuery', true);
+  if (!MONGODB_URI) throw new Error('MONGODB_URI is missing');
   cachedDb = await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   return cachedDb;
 }
 
 // Middleware to ensure DB connection
-app.use(async (req, res, next) => {
+router.use(async (req, res, next) => {
   try {
     await connectToDatabase();
     next();
   } catch (err) {
-    res.status(503).json({ message: 'Database connection error' });
+    res.status(503).json({ message: 'Database error', error: err.message });
   }
 });
 
-// --- API Endpoints (copy-pasted from server.js and adapted) ---
+// --- API Routes (БЕЗ префикса /api, так как роутер будет примонтирован) ---
 
-app.post('/api/auth/send-code', async (req, res) => {
+router.get('/hello', (req, res) => res.json({ message: "API is working!" }));
+
+router.post('/auth/send-code', async (req, res) => {
   const { email } = req.body;
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await AuthCode.findOneAndUpdate({ email }, { code }, { upsert: true });
@@ -122,7 +118,7 @@ app.post('/api/auth/send-code', async (req, res) => {
   }
 });
 
-app.post('/api/auth/verify', async (req, res) => {
+router.post('/auth/verify', async (req, res) => {
   const { email, code } = req.body;
   const authRecord = await AuthCode.findOne({ email, code });
   if (authRecord) {
@@ -136,7 +132,7 @@ app.post('/api/auth/verify', async (req, res) => {
   }
 });
 
-app.post('/api/auth/register', async (req, res) => {
+router.post('/auth/register', async (req, res) => {
   const { email, name, surname, avatar, bio } = req.body;
   const newUser = new User({ id: Date.now().toString(), email, name, surname, avatar: avatar || (name ? name[0] : '?'), bio: bio || '', lastSeen: new Date() });
   await newUser.save();
@@ -145,65 +141,70 @@ app.post('/api/auth/register', async (req, res) => {
   res.json({ status: 'ok', token, user: newUser });
 });
 
-app.post('/api/user/ping', async (req, res) => {
+router.post('/user/ping', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const user = await User.findOneAndUpdate({ id: decoded.id }, { lastSeen: new Date() }, { new: true });
-  res.json({ status: 'ok', lastSeen: user ? user.lastSeen : null });
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const user = await User.findOneAndUpdate({ id: decoded.id }, { lastSeen: new Date() }, { new: true });
+    res.json({ status: 'ok', lastSeen: user ? user.lastSeen : null });
+  } catch(e) { res.sendStatus(403); }
 });
 
-app.get('/api/user/me', async (req, res) => {
+router.get('/user/me', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const user = await User.findOne({ id: decoded.id });
-  res.json(user);
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const user = await User.findOne({ id: decoded.id });
+    res.json(user);
+  } catch(e) { res.sendStatus(403); }
 });
 
-app.get('/api/chats', async (req, res) => {
+router.get('/chats', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const chats = await Chat.find({ members: decoded.id });
-  const mappedChats = await Promise.all(chats.map(async c => {
-    if (c.id === 'znakAI') return { ...c.toObject(), name: 'znakAI', avatar: '🤖', type: 'bot' };
-    if (c.type === 'private') {
-      const otherId = c.members.find(m => m !== decoded.id) || decoded.id;
-      const otherUser = await User.findOne({ id: otherId });
-      if (otherUser) {
-        return { ...c.toObject(), name: `${otherUser.name} ${otherUser.surname || ''}`, avatar: otherUser.avatar, username: otherUser.username, lastSeen: otherUser.lastSeen };
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const chats = await Chat.find({ members: decoded.id });
+    const mappedChats = await Promise.all(chats.map(async c => {
+      if (c.id === 'znakAI') return { ...c.toObject(), name: 'znakAI', avatar: '🤖', type: 'bot' };
+      if (c.type === 'private') {
+        const otherId = c.members.find(m => m !== decoded.id) || decoded.id;
+        const otherUser = await User.findOne({ id: otherId });
+        if (otherUser) {
+          return { ...c.toObject(), name: `${otherUser.name} ${otherUser.surname || ''}`, avatar: otherUser.avatar, username: otherUser.username, lastSeen: otherUser.lastSeen };
+        }
       }
-    }
-    return c;
-  }));
-  res.json(mappedChats);
+      return c;
+    }));
+    res.json(mappedChats);
+  } catch(e) { res.sendStatus(403); }
 });
 
-app.get('/api/messages/:chatId', async (req, res) => {
+router.get('/messages/:chatId', async (req, res) => {
   const messages = await Message.find({ chatId: req.params.chatId }).sort({ time: 1 });
   res.json(messages);
 });
 
-app.post('/api/messages', async (req, res) => {
+router.post('/messages', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
-  const decoded = jwt.verify(token, SECRET_KEY);
-  const { chatId, text, fileData, fileName, replyTo, forwardFrom } = req.body;
-  const msg = new Message({ id: Date.now().toString(), chatId, senderId: decoded.id, text, fileData, fileName, replyTo, forwardFrom, readBy: [decoded.id] });
-  await msg.save();
-  res.json(msg);
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    const { chatId, text, fileData, fileName, replyTo, forwardFrom } = req.body;
+    const msg = new Message({ id: Date.now().toString(), chatId, senderId: decoded.id, text, fileData, fileName, replyTo, forwardFrom, readBy: [decoded.id] });
+    await msg.save();
+    res.json(msg);
+  } catch(e) { res.sendStatus(403); }
 });
 
-app.get('/api/admin/users', async (req, res) => {
-  const users = await User.find({});
-  res.json(users);
-});
+// Монтируем роутер по обоим путям для надежности
+app.use('/api', router);
+app.use('/.netlify/functions/api', router);
 
-// Export handler for Netlify
 export const handler = serverless(app);
-
