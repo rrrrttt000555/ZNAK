@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ZNAK Messenger</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body class="light-theme">
+    <div id="auth-container" class="auth-container">
+        <div class="auth-card">
+            <button id="cancel-auth-btn" class="close-modal hidden" style="position: absolute; top: 15px; right: 15px;"><i class="fas fa-times"></i></button>
+            <h1 class="logo">ZNAK</h1>
+            <div id="email-step">
+                <h2>Вход в мессенджер</h2>
+                <p>Введите ваш email для получения кода</p>
+                <input type="email" id="email-input" placeholder="Email" required>
+                <button id="send-code-btn">Продолжить</button>
+            </div>
+            <div id="code-step" class="hidden">
+                <h2>Введите код</h2>
+                <p>Мы отправили 6-значный код на ваш email</p>
+                <input type="text" id="code-input" placeholder="000000" maxlength="6">
+                <button id="verify-code-btn">Подтвердить</button>
+                <button class="secondary-btn" id="back-to-email">Назад</button>
+            </div>
+            <div id="register-step" class="hidden">
+                <h2>Завершите регистрацию</h2>
+                <input type="text" id="name-input" placeholder="Имя" required>
+                <input type="text" id="surname-input" placeholder="Фамилия" required>
+                <textarea id="bio-input" placeholder="О себе (необязательно)"></textarea>
+                <button id="register-btn">Создать профиль</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="app-container" class="app-container hidden">
+        <div id="side-drawer" class="drawer hidden">
+            <div class="drawer-content">
+                <div class="drawer-header">
+                    <div class="drawer-user-info">
+                        <div class="chat-avatar" id="drawer-avatar"></div>
+                        <div class="drawer-user-text">
+                            <h4 id="drawer-name"></h4>
+                            <p id="drawer-email"></p>
+                        </div>
+                    </div>
+                </div>
+                <div class="drawer-menu">
+                    <div class="drawer-item" id="drawer-profile"><i class="fas fa-user"></i> <span data-t="profile">Мой профиль</span></div>
+                    <div class="drawer-item" id="drawer-new-group"><i class="fas fa-users"></i> <span data-t="new_group">Создать группу</span></div>
+                    <div class="drawer-item" id="drawer-new-channel"><i class="fas fa-bullhorn"></i> <span data-t="new_channel">Создать канал</span></div>
+                    <div class="drawer-item" id="drawer-settings"><i class="fas fa-cog"></i> <span data-t="settings">Настройки</span></div>
+                    <div class="drawer-item hidden" id="drawer-admin"><i class="fas fa-user-shield"></i> <span data-t="admin_panel">Админ панель</span></div>
+                </div>
+            </div>
+            <div class="drawer-overlay"></div>
+        </div>
+
+        <aside class="sidebar">
+            <header class="sidebar-header">
+                <div class="menu-btn" id="main-menu-btn"><i class="fas fa-bars"></i></div>
+                <div class="search-container">
+                    <i class="fas fa-search"></i>
+                    <input type="text" id="search-input" placeholder="Поиск">
+                </div>
+            </header>
+            <div class="chat-list" id="chat-list">
+                <!-- Chats will be loaded here -->
+            </div>
+            <div class="bottom-nav">
+                <div class="nav-item active" data-tab="chats" data-t="chats">Чаты</div>
+                <div class="nav-item" data-tab="groups" data-t="groups">Группы</div>
+                <div class="nav-item" data-tab="channels" data-t="channels">Каналы</div>
+            </div>
+        </aside>
+
+        <main class="chat-window" id="chat-window">
+            <div class="no-chat-selected">
+                <p>Выберите чат, чтобы начать общение</p>
+            </div>
+            <div class="chat-active hidden">
+                <header class="chat-header">
+                    <div id="normal-header" class="chat-header-content">
+                        <div class="back-btn"><i class="fas fa-arrow-left"></i></div>
+                        <div class="chat-info">
+                            <div class="chat-avatar" id="active-chat-avatar"></div>
+                            <div class="chat-details">
+                                <h4 id="active-chat-name"></h4>
+                                <div id="active-chat-status" class="chat-status"></div>
+                            </div>
+                        </div>
+
+                    </div>
+                    <div id="selection-header" class="chat-header-content hidden">
+                        <button id="cancel-selection-btn"><i class="fas fa-times"></i></button>
+                        <span id="selected-count">0</span>
+                        <div class="selection-actions">
+                            <button id="forward-selected-btn" data-t="forward">ПЕРЕСЛАТЬ</button>
+                            <button id="delete-selected-btn" data-t="delete">УДАЛИТЬ</button>
+                        </div>
+                    </div>
+                </header>
+                <div class="message-container" id="message-container">
+                    <!-- Messages will be loaded here -->
+                </div>
+                <!-- Pin Panel -->
+                <div id="pin-panel" class="pin-panel hidden">
+                    <div class="pin-info">
+                        <i class="fas fa-thumbtack"></i>
+                        <div class="pin-text">
+                            <span>Закрепленное сообщение</span>
+                            <p id="pin-msg-preview"></p>
+                        </div>
+                    </div>
+                    <button id="close-pin"><i class="fas fa-times"></i></button>
+                </div>
+                <!-- Reply/Forward Preview -->
+                <div id="message-action-preview" class="msg-preview hidden">
+                    <div class="preview-content">
+                        <i id="preview-icon" class="fas fa-reply"></i>
+                        <div class="preview-text">
+                            <span id="preview-title">В ответ Мишаня</span>
+                            <p id="preview-body"></p>
+                        </div>
+                    </div>
+                    <button id="close-preview"><i class="fas fa-times"></i></button>
+                </div>
+                <footer class="chat-footer">
+                    <div class="upload-progress-container" id="upload-progress-container">
+                        <div class="upload-progress-bar" id="upload-progress-bar"></div>
+                    </div>
+                    <input type="file" id="file-input" class="hidden">
+                    <button class="attach-btn" id="attach-btn"><i class="fas fa-paperclip"></i></button>
+                    <input type="text" id="message-input" placeholder="Написать сообщение...">
+                    <button id="save-edit-btn" class="send-btn hidden"><i class="fas fa-check"></i></button>
+                    <button id="send-btn" class="send-btn"><i class="fas fa-paper-plane"></i></button>
+                </footer>
+            </div>
+        </main>
+
+        <div id="settings-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Настройки</h3>
+                    <button class="close-modal"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="profile-preview">
+                        <div class="large-avatar" id="settings-avatar"></div>
+                        <div class="profile-info">
+                            <h4 id="settings-name-full"></h4>
+                            <p id="settings-bio"></p>
+                        </div>
+                        <button id="edit-profile-btn" class="icon-btn"><i class="fas fa-pencil-alt"></i></button>
+                    </div>
+                    <div class="settings-section">
+                        <h4>Аккаунты</h4>
+                        <div id="accounts-list">
+                            <!-- Accounts will be listed here -->
+                        </div>
+                        <button id="add-account-btn" class="secondary-btn">+ Добавить аккаунт</button>
+                    </div>
+                    <div class="settings-section">
+                        <h4>Внешний вид</h4>
+                        <div class="setting-item">
+                            <span>Тёмная тема</span>
+                            <label class="switch">
+                                <input type="checkbox" id="theme-toggle">
+                                <span class="slider round"></span>
+                            </label>
+                        </div>
+                        <div class="setting-item">
+                            <span>Размер шрифта</span>
+                            <select id="font-size-select">
+                                <option value="small">Мелкий</option>
+                                <option value="medium" selected>Средний</option>
+                                <option value="large">Большой</option>
+                            </select>
+                        </div>
+                        <div class="setting-item">
+                            <span>Язык</span>
+                            <select id="lang-select">
+                                <option value="ru">Русский</option>
+                                <option value="en">English</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="logout-btn" class="danger-btn">Выйти</button>
+                    <button id="open-delete-account-btn" class="danger-btn" style="background: transparent; border: 1px solid #f44336; color: #f44336; margin-top: 10px;">Удалить аккаунт</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Add Member Modal -->
+        <div id="add-member-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Добавить участника</h3>
+                    <button class="close-add-member"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="input-group" style="padding: 10px 24px;">
+                        <input type="text" id="member-search-input" placeholder="Поиск по имени или @username...">
+                    </div>
+                    <div id="member-search-results" class="forward-list">
+                        <!-- Search results here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Account Confirm Modal -->
+        <div id="delete-account-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3 class="text-danger">Удалить аккаунт?</h3>
+                </header>
+                <div class="settings-body" style="display: flex; flex-direction: column; gap: 10px;">
+                    <p class="text-danger" style="text-align: center; font-weight: bold;">Вы точно хотите удалить? Все данные будут стерты навсегда.</p>
+                    <button id="cancel-delete-account-btn" class="btn-cancel-confirm">Отменить</button>
+                    <button id="confirm-delete-account-btn" class="btn-delete-confirm">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="edit-profile-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Редактировать профиль</h3>
+                    <button class="close-edit-modal"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="input-group">
+                        <label>Имя</label>
+                        <input type="text" id="edit-name">
+                    </div>
+                    <div class="input-group">
+                        <label>Фамилия</label>
+                        <input type="text" id="edit-surname">
+                    </div>
+                    <div class="input-group">
+                        <label>Имя пользователя (@username)</label>
+                        <input type="text" id="edit-username" placeholder="@username">
+                        <p id="username-error" class="error-text hidden"></p>
+                        <div id="username-suggestions" class="suggestions-list hidden"></div>
+                    </div>
+                    <div class="input-group">
+                        <label>О себе</label>
+                        <textarea id="edit-bio"></textarea>
+                    </div>
+                    <div id="save-profile-btn">Сохранить</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="chat-info-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3 id="info-modal-title">Информация</h3>
+                    <button class="close-info-modal"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="profile-preview">
+                        <div class="large-avatar" id="info-avatar"></div>
+                        <div class="profile-info">
+                            <h4 id="info-name"></h4>
+                            <p id="info-status"></p>
+                        </div>
+                    </div>
+                    <div class="settings-section">
+                        <h4>Описание</h4>
+                        <p id="info-description" style="padding: 0 24px 16px; color: var(--text-secondary);"></p>
+                        <div id="group-stats" class="hidden">
+                            <h4>Статистика</h4>
+                            <div class="setting-item">
+                                <span>Участники</span>
+                                <span id="info-members-count">0</span>
+                            </div>
+                            <div id="group-members-list" class="settings-section">
+                                <!-- Members will be listed here -->
+                            </div>
+                            <div id="add-member-section" class="settings-section hidden">
+                                <button id="open-add-member-btn" class="secondary-btn">+ Добавить участника</button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="user-actions" class="settings-section hidden">
+                        <button id="block-user-btn" class="danger-btn" data-t="block">Заблокировать</button>
+                        <button id="report-user-btn" class="secondary-btn" data-t="report">Пожаловаться</button>
+                    </div>
+                    <div id="chat-admin-actions" class="settings-section hidden">
+                        <h4>Управление</h4>
+                        <button id="edit-chat-btn" class="secondary-btn">Изменить</button>
+                        <button id="delete-chat-btn" class="danger-btn">Удалить</button>
+                    </div>
+                    <button id="leave-group-btn" class="danger-btn hidden" data-t="leave">Выйти из группы</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Modal -->
+        <div id="report-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3 data-t="report">Жалоба на пользователя</h3>
+                    <button class="close-report"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div id="reported-message-preview" class="hidden" style="padding: 10px 24px; margin: 10px 24px; background: rgba(0,0,0,0.05); border-left: 3px solid #e53935; border-radius: 4px;">
+                        <small style="color: #e53935;">Сообщение:</small>
+                        <p id="reported-text" style="font-style: italic; margin-top: 5px;"></p>
+                    </div>
+                    <p style="padding: 0 24px 16px; color: var(--text-secondary);">Почему вы пожаловались? Напишите подробно причину жалобы. Мы рассмотрим при первом же возможности.</p>
+                    <div class="input-group">
+                        <textarea id="report-reason" placeholder="Опишите причину..."></textarea>
+                    </div>
+                    <button id="send-report-btn">Отправить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Success Animation Overlay -->
+        <div id="success-overlay" class="overlay hidden">
+            <div class="success-content">
+                <div class="checkmark-circle">
+                    <div class="checkmark draw"></div>
+                </div>
+                <p id="success-text"></p>
+            </div>
+        </div>
+
+        <!-- Admin Modal -->
+        <div id="admin-modal" class="modal hidden">
+            <div class="modal-content admin-modal-content">
+                <header class="modal-header">
+                    <h3>Панель модератора</h3>
+                    <button class="close-admin-modal"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="admin-body">
+                    <div class="admin-tabs">
+                        <div class="admin-tab active" data-admin-tab="stats" data-t="stats">Статистика</div>
+                        <div class="admin-tab" data-admin-tab="users" data-t="users">Пользователи</div>
+                        <div class="admin-tab" data-admin-tab="reports" data-t="reports">Жалобы</div>
+                    </div>
+                    <div class="admin-tab-content" id="admin-stats-tab">
+                        <div class="stats-grid" id="admin-stats-grid">
+                            <!-- Stats here -->
+                        </div>
+                        <div class="admin-chart-container" style="margin-top: 20px; height: 300px; position: relative;">
+                            <canvas id="admin-stats-chart"></canvas>
+                        </div>
+                    </div>
+                    <div class="admin-tab-content hidden" id="admin-users-tab">
+                        <div class="admin-search">
+                            <input type="text" id="admin-user-search" placeholder="Поиск по @username...">
+                            <button id="promote-mod-btn">Назначить модератором</button>
+                        </div>
+                        <div class="admin-table-container">
+                            <table id="admin-users-table">
+                                <thead>
+                                    <tr>
+                                        <th>Имя Фамилия</th>
+                                        <th>@username</th>
+                                        <th>Регистрация</th>
+                                        <th>Статус</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="admin-tab-content hidden" id="admin-reports-tab">
+                        <div class="admin-table-container">
+                            <table id="admin-reports-table">
+                                <thead>
+                                    <tr>
+                                        <th>От кого</th>
+                                        <th>На кого</th>
+                                        <th>Сообщение</th>
+                                        <th>Причина</th>
+                                        <th>Действия</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Unblock Footer Area -->
+        <div id="unblock-footer" class="unblock-footer hidden">
+            <button id="unblock-action-btn" data-t="unblock">РАЗБЛОКИРОВАТЬ</button>
+        </div>
+
+        <!-- New Group Modal -->
+        <div id="create-group-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Создать группу</h3>
+                    <button class="close-create-group"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="input-group">
+                        <label>Название группы</label>
+                        <input type="text" id="group-name-input" placeholder="Введите название">
+                    </div>
+                    <div class="input-group">
+                        <label>Описание</label>
+                        <textarea id="group-desc-input" placeholder="О чем эта группа?"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Аватар (эмодзи или ссылка)</label>
+                        <input type="text" id="group-avatar-input" placeholder="👥">
+                    </div>
+                    <button id="confirm-create-group">Создать</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- New Channel Modal -->
+        <div id="create-channel-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Создать канал</h3>
+                    <button class="close-create-channel"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="input-group">
+                        <label>Название канала</label>
+                        <input type="text" id="channel-name-input" placeholder="Введите название">
+                    </div>
+                    <div class="input-group">
+                        <label>Описание</label>
+                        <textarea id="channel-desc-input" placeholder="О чем этот канал?"></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Тип канала</label>
+                        <select id="channel-type-select">
+                            <option value="public">Публичный</option>
+                            <option value="private">Приватный</option>
+                        </select>
+                    </div>
+                    <button id="confirm-create-channel">Создать</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Context Menu -->
+        <div id="context-menu" class="context-menu hidden">
+            <div class="menu-item" data-action="reply"><i class="fas fa-reply"></i> <span data-t="reply">Ответить</span></div>
+            <div class="menu-item" data-action="edit"><i class="fas fa-pencil-alt"></i> <span data-t="edit">Изменить</span></div>
+            <div class="menu-item" data-action="copy"><i class="fas fa-copy"></i> <span data-t="copy">Скопировать</span></div>
+            <div class="menu-item" data-action="forward"><i class="fas fa-share"></i> <span data-t="forward">Переслать</span></div>
+            <div class="menu-item" data-action="pin"><i class="fas fa-thumbtack"></i> <span data-t="pin">Закрепить</span></div>
+            <div class="menu-item" data-action="select"><i class="fas fa-check-square"></i> Выделить</div>
+            <div class="menu-item danger" data-action="report" style="color: #e53935;"><i class="fas fa-flag"></i> <span data-t="report">Пожаловаться</span></div>
+            <div class="menu-item danger" data-action="delete"><i class="fas fa-trash"></i> <span data-t="delete">Удалить</span></div>
+        </div>
+
+        <!-- Delete Confirm Modal -->
+        <div id="delete-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header"><h3>Удалить сообщение?</h3></header>
+                <div class="settings-body">
+                    <button id="delete-self-btn" class="secondary-btn">Удалить у себя</button>
+                    <button id="delete-all-btn" class="danger-btn">Удалить у всех</button>
+                    <button class="secondary-btn close-delete-modal">Отмена</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Edit Chat Modal -->
+        <div id="edit-chat-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3 id="edit-chat-modal-title">Изменить чат</h3>
+                    <button class="close-edit-chat"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body">
+                    <div class="input-group">
+                        <label>Название</label>
+                        <input type="text" id="edit-chat-name" placeholder="Введите название">
+                    </div>
+                    <div class="input-group">
+                        <label>Описание</label>
+                        <textarea id="edit-chat-desc" placeholder="Описание..."></textarea>
+                    </div>
+                    <div class="input-group">
+                        <label>Аватар (эмодзи или ссылка)</label>
+                        <input type="text" id="edit-chat-avatar" placeholder="👥">
+                    </div>
+                    <button id="save-chat-edit-btn">Сохранить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Chat Confirm Modal -->
+        <div id="delete-chat-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3 id="delete-chat-title" class="text-danger">Вы точно хотите удалить?</h3>
+                </header>
+                <div class="settings-body" style="display: flex; flex-direction: column; gap: 10px;">
+                    <p id="delete-chat-warning" class="text-danger" style="text-align: center; font-weight: bold;"></p>
+                    <button id="cancel-delete-chat-btn" class="btn-cancel-confirm">Отменить</button>
+                    <button id="confirm-delete-chat-btn" class="btn-delete-confirm">Удалить</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Forward List Modal -->
+        <div id="forward-modal" class="modal hidden">
+            <div class="modal-content">
+                <header class="modal-header">
+                    <h3>Переслать сообщение</h3>
+                    <button class="close-forward"><i class="fas fa-times"></i></button>
+                </header>
+                <div class="settings-body forward-list" id="forward-chat-list">
+                    <!-- Chats will be listed here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Blocked Overlay -->
+    <div id="blocked-overlay" class="modal hidden" style="z-index: 9999; display: flex; align-items: center; justify-content: center; background: rgba(0,0,0,0.9);">
+        <div class="modal-content" style="text-align: center; padding: 40px; max-width: 500px;">
+            <i class="fas fa-user-slash" style="font-size: 64px; color: #f44336; margin-bottom: 20px;"></i>
+            <h2 class="text-danger" style="margin-bottom: 20px;">Доступ ограничен</h2>
+            <p style="font-size: 18px; margin-bottom: 30px;">К сожалению, ваш аккаунт был заблокирован из-за нарушений правил.</p>
+            <button onclick="logout()" class="btn-delete-confirm" style="width: 100%; padding: 15px; font-size: 16px;">Закрыть</button>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
