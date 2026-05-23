@@ -242,12 +242,44 @@ function saveAccount(token, user) {
     localStorage.setItem('accounts', JSON.stringify(accounts));
 }
 
-function switchAccount(index) {
+async function switchAccount(index) {
+    const loader = document.getElementById('account-switch-loader');
+    if (loader) loader.classList.remove('hidden');
+
     const acc = accounts[index];
     localStorage.setItem('token', acc.token);
-    // Clear active chat to prevent showing chat from previous account
-    activeChatId = null;
-    window.location.reload();
+    
+    // Give it a moment to show the loader and then re-init
+    setTimeout(async () => {
+        try {
+            const res = await fetch(`${API_URL}/api/user/me`, {
+                headers: { 'Authorization': `Bearer ${acc.token}` }
+            });
+            if (res.ok) {
+                currentUser = await res.json();
+                accounts[index].user = currentUser;
+                saveAccounts();
+                
+                // Clear state
+                activeChatId = null;
+                chats = [];
+                messagesInterval = null;
+                
+                applyUserSettings(currentUser);
+                loadChats();
+                
+                setTimeout(() => {
+                    if (loader) loader.classList.add('hidden');
+                    const settingsModal = document.getElementById('settings-modal');
+                    if (settingsModal) settingsModal.classList.add('hidden');
+                }, 1000);
+            } else {
+                window.location.reload();
+            }
+        } catch (e) {
+            window.location.reload();
+        }
+    }, 500);
 }
 
 function renderAccounts() {
@@ -997,6 +1029,26 @@ async function deleteMessage(mode) {
 }
 
 function applyUserSettings(user) {
+    // Check if user is blocked
+    const blockedOverlay = document.getElementById('blocked-overlay');
+    if (user.isBlockedByMod) {
+        if (blockedOverlay) {
+            blockedOverlay.classList.remove('hidden');
+            const otherAccContainer = document.getElementById('other-acc-btn-container');
+            if (otherAccContainer) {
+                const otherAcc = accounts.find(acc => acc.user.id !== user.id);
+                if (otherAcc) {
+                    const otherIdx = accounts.indexOf(otherAcc);
+                    otherAccContainer.innerHTML = `<button onclick="switchAccount(${otherIdx})" class="btn-switch-acc" style="width: 100%; padding: 12px; border-radius: 10px; color: white; font-weight: 600; cursor: pointer; margin-top: 10px;">Перейти на аккаунт ${otherAcc.user.name}</button>`;
+                } else {
+                    otherAccContainer.innerHTML = '';
+                }
+            }
+        }
+    } else {
+        if (blockedOverlay) blockedOverlay.classList.add('hidden');
+    }
+
     document.body.className = user.theme === 'dark' ? 'dark-theme' : 'light-theme';
     document.body.classList.add(`font-${user.fontSize || 'medium'}`);
     
@@ -1178,18 +1230,19 @@ async function checkUsername(username) {
 }
 
 async function saveProfile() {
-    const name = document.getElementById('edit-name').value;
-    const surname = document.getElementById('edit-surname').value;
+    const name = document.getElementById('edit-name').value.trim();
+    const surname = document.getElementById('edit-surname').value.trim();
     let username = document.getElementById('edit-username').value.trim();
-    const bio = document.getElementById('edit-bio').value;
+    const bio = document.getElementById('edit-bio').value.trim();
     const token = localStorage.getItem('token');
 
     if (username && !username.startsWith('@')) username = '@' + username;
+    const cleanUsername = username ? username.replace('@', '') : '';
 
     const res = await fetch(`${API_URL}/api/user/me`, { 
         method: 'PUT', 
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
-        body: JSON.stringify({ name, surname, username, bio }) 
+        body: JSON.stringify({ name, surname, username: cleanUsername, bio }) 
     });
     
     if (res.ok) {
@@ -1200,18 +1253,21 @@ async function saveProfile() {
         const suggestionsEl = document.getElementById('username-suggestions');
         if (errorEl) errorEl.classList.add('hidden');
         if (suggestionsEl) suggestionsEl.classList.add('hidden');
-    } else {
+        showSuccess('Профиль обновлен');
+    } else if (res.status === 409) {
         const data = await res.json();
         const errorEl = document.getElementById('username-error');
         const suggestionsEl = document.getElementById('username-suggestions');
         if (errorEl) {
-            errorEl.innerText = data.message;
+            errorEl.innerText = 'Данный Username занят, выберите из списка другой';
             errorEl.classList.remove('hidden');
         }
         if (suggestionsEl && data.suggestions) {
-            suggestionsEl.innerHTML = data.suggestions.map(s => `<div class="suggestion-item" onclick="selectSuggestion('${s}')">${s}</div>`).join('');
+            suggestionsEl.innerHTML = data.suggestions.map(s => `<div class="suggestion-item" onclick="selectSuggestion('@${s}')">@${s}</div>`).join('');
             suggestionsEl.classList.remove('hidden');
         }
+    } else {
+        alert('Ошибка при сохранении профиля');
     }
 }
 
@@ -1479,6 +1535,7 @@ async function sendReport() {
     const chat = chats.find(c => c.id === activeChatId);
     
     let targetId = reportedTargetId;
+    let reportedText = document.getElementById('reported-text').innerText;
     console.log('Initial targetId:', targetId);
     
     // Fallback if no specific target is set (e.g. reporting from profile)
@@ -1492,11 +1549,11 @@ async function sendReport() {
         return alert('Не удалось определить пользователя для жалобы. Попробуйте нажать на сообщение и выбрать "Пожаловаться".');
     }
     
-    console.log('Sending report to server:', { targetId, reason });
+    console.log('Sending report to server:', { targetId, reason, reportedText });
     const res = await fetch(`${API_URL}/api/reports`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ targetId, reason })
+        body: JSON.stringify({ targetId, reason, reportedText })
     });
     
     if (res.ok) {
@@ -1551,30 +1608,27 @@ async function loadAdminStats() {
                     return;
                 }
                 adminChart = new Chart(ctx, {
-                    type: 'bar',
+                    type: 'line',
                     data: {
                         labels: stats.chartData.labels,
                         datasets: [
                             { 
                                 label: 'Сообщения', 
                                 data: stats.chartData.messages, 
-                                backgroundColor: 'rgba(51, 144, 236, 0.7)',
+                                backgroundColor: 'rgba(51, 144, 236, 0.2)',
                                 borderColor: '#3390ec',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true
                             },
                             { 
                                 label: 'Регистрации', 
                                 data: stats.chartData.registrations, 
-                                backgroundColor: 'rgba(76, 175, 80, 0.7)',
+                                backgroundColor: 'rgba(76, 175, 80, 0.2)',
                                 borderColor: '#4caf50',
-                                borderWidth: 1
-                            },
-                            { 
-                                label: 'Новые чаты', 
-                                data: stats.chartData.chatsCreated, 
-                                backgroundColor: 'rgba(255, 152, 0, 0.7)',
-                                borderColor: '#ff9800',
-                                borderWidth: 1
+                                borderWidth: 2,
+                                tension: 0.4,
+                                fill: true
                             }
                         ]
                     },
@@ -1582,14 +1636,17 @@ async function loadAdminStats() {
                         responsive: true,
                         maintainAspectRatio: false,
                         plugins: { 
-                            legend: { position: 'bottom' },
-                            title: { display: true, text: 'Активность мессенджера' }
+                            legend: { position: 'top' },
+                            title: { display: false }
                         },
                         scales: { 
                             y: { 
                                 beginAtZero: true, 
-                                ticks: { stepSize: 1 } 
-                            } 
+                                grid: { color: 'rgba(0,0,0,0.05)' }
+                            },
+                            x: {
+                                grid: { display: false }
+                            }
                         }
                     }
                 });
@@ -1678,20 +1735,70 @@ async function loadAdminReports() {
         tbody.innerHTML = reports.map(r => `
             <tr>
                 <td>${r.reporterName}</td>
-                <td>${r.targetName} <button onclick="window.showUserProfile('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px;">Профиль</button></td>
-                <td><small>${r.reportedMessage || 'No message'}</small></td>
+                <td>
+                    ${r.targetName} 
+                    <div style="display: flex; gap: 5px; margin-top: 5px;">
+                        <button onclick="window.showUserProfile('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px;">Профиль</button>
+                        <button onclick="window.adminLoginAs('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px; border-color: #4caf50; color: #4caf50;">Войти</button>
+                    </div>
+                </td>
+                <td><div style="max-width: 200px; max-height: 60px; overflow-y: auto; font-size: 11px;">${r.reportedMessage || '-'}</div></td>
                 <td>${r.reason}</td>
                 <td>
                     ${r.status === 'pending' ? `
-                        <button onclick="window.adminAction('${r.id}', 'block')" class="danger-btn" style="width: auto; padding: 4px 8px;">Заблокировать</button>
-                        <button onclick="window.adminAction('${r.id}', 'reject')" class="secondary-btn" style="width: auto; padding: 4px 8px;">Отклонить</button>
-                    ` : `<span>${r.status}</span>`}
+                        <button onclick="window.adminAction('${r.id}', 'block')" class="danger-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">Бан</button>
+                        <button onclick="window.adminAction('${r.id}', 'reject')" class="secondary-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">Откл.</button>
+                    ` : `<span style="font-size: 11px; font-weight: bold; color: ${r.status === 'blocked' ? '#f44336' : '#707579'}">${r.status.toUpperCase()}</span>`}
                 </td>
             </tr>
         `).join('');
     }
 }
 window.loadAdminReports = loadAdminReports;
+
+async function adminLoginAs(userId) {
+    if (!confirm('Вы уверены, что хотите войти в аккаунт этого пользователя для проверки?')) return;
+    
+    const loader = document.getElementById('account-switch-loader');
+    if (loader) {
+        document.querySelector('.loader-text').innerText = 'Вход в аккаунт нарушителя';
+        loader.classList.remove('hidden');
+    }
+
+    const token = localStorage.getItem('token');
+    const res = await fetch(`${API_URL}/api/admin/login-as/${userId}`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    if (res.ok) {
+        const data = await res.json();
+        // Add to accounts if not already there
+        const exists = accounts.find(acc => acc.token === data.token);
+        if (!exists) {
+            accounts.push({ token: data.token, user: data.user });
+            saveAccounts();
+        }
+        
+        localStorage.setItem('token', data.token);
+        currentUser = data.user;
+        
+        applyUserSettings(currentUser);
+        loadChats();
+        
+        setTimeout(() => {
+            if (loader) {
+                loader.classList.add('hidden');
+                document.querySelector('.loader-text').innerText = 'Переход на другой аккаунт';
+            }
+            document.getElementById('admin-modal').classList.add('hidden');
+        }, 1500);
+    } else {
+        alert('Ошибка при входе в аккаунт');
+        if (loader) loader.classList.add('hidden');
+    }
+}
+window.adminLoginAs = adminLoginAs;
 
 let editingChatId = null;
 
