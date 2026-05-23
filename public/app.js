@@ -1,4 +1,4 @@
-const API_URL = ''; // Relative to host
+const API_URL = ''; // На Netlify API будет на том же домене
 
 let currentUser = null;
 let translations = {
