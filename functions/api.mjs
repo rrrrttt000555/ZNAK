@@ -194,6 +194,19 @@ router.get('/user/me', useDB, authenticate, async (req, res) => {
 });
 
 router.put('/user/me', useDB, authenticate, async (req, res) => {
+  const { username } = req.body;
+  if (username) {
+    const existing = await User.findOne({ username, id: { $ne: req.user.id } });
+    if (existing) {
+      const suggestions = [];
+      for (let i = 1; i <= 3; i++) {
+        const sugg = `${username}${Math.floor(Math.random() * 999)}`;
+        const check = await User.findOne({ username: sugg });
+        if (!check) suggestions.push(sugg);
+      }
+      return res.status(409).json({ message: 'Username taken', suggestions });
+    }
+  }
   const user = await User.findOneAndUpdate({ id: req.user.id }, { $set: req.body }, { new: true });
   res.json(user);
 });
@@ -267,7 +280,49 @@ router.get('/admin/stats', useDB, authenticate, async (req, res) => {
   const chatCount = await Chat.countDocuments();
   const messageCount = await Message.countDocuments();
   const reportCount = await Report.countDocuments({ status: 'pending' });
-  res.json({ totalUsers: userCount, totalChats: chatCount, totalMessages: messageCount, pendingReports: reportCount });
+  
+  // Aggregate chart data (last 7 days)
+  const chartData = {
+    labels: [],
+    messages: [],
+    registrations: [],
+    chatsCreated: []
+  };
+  
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date();
+    d.setDate(d.getDate() - i);
+    d.setHours(0,0,0,0);
+    const nextD = new Date(d);
+    nextD.setDate(nextD.getDate() + 1);
+    
+    const dayLabel = d.toLocaleDateString('ru-RU', { day: 'numeric', month: 'short' });
+    chartData.labels.push(dayLabel);
+    
+    const msgDay = await Message.countDocuments({ time: { $gte: d, $lt: nextD } });
+    chartData.messages.push(msgDay);
+    
+    // Using Date.now() logic for IDs in our mock, but in real app we'd have createdAt
+    // Let's approximate registrations by parsing ID if it looks like timestamp
+    const regDay = await User.countDocuments({ id: { $gte: d.getTime().toString(), $lt: nextD.getTime().toString() } });
+    chartData.registrations.push(regDay);
+
+    const chatsDay = await Chat.countDocuments({ id: { $gte: d.getTime().toString(), $lt: nextD.getTime().toString() } });
+    chartData.chatsCreated.push(chatsDay);
+  }
+
+  res.json({ totalUsers: userCount, totalChats: chatCount, totalMessages: messageCount, pendingReports: reportCount, chartData });
+});
+
+router.post('/admin/login-as/:userId', useDB, authenticate, async (req, res) => {
+  const isAdmin = ADMINS.includes(req.user.email);
+  if (!isAdmin) return res.sendStatus(403);
+  
+  const user = await User.findOne({ id: req.params.userId });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  
+  const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY);
+  res.json({ token, user });
 });
 
 router.get('/admin/reports', useDB, authenticate, async (req, res) => {
@@ -332,7 +387,7 @@ router.post('/admin/reports/:reportId/action', useDB, authenticate, async (req, 
 
 // --- REPORTS ---
 router.post('/reports', useDB, authenticate, async (req, res) => {
-  const { targetId, reason, messageId } = req.body;
+  const { targetId, reason, messageId, reportedText } = req.body;
   const target = await User.findOne({ id: targetId });
   const reporter = await User.findOne({ id: req.user.id });
   
@@ -343,7 +398,7 @@ router.post('/reports', useDB, authenticate, async (req, res) => {
     targetId,
     targetName: target ? `${target.name} ${target.surname || ''}` : 'Unknown',
     reason,
-    reportedMessage: messageId,
+    reportedMessage: reportedText || messageId || '',
     time: new Date()
   });
   
