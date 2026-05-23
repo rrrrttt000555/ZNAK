@@ -12,6 +12,9 @@ const router = express.Router();
 const SECRET_KEY = process.env.SECRET_KEY || 'znak_secret_key';
 const MONGODB_URI = process.env.MONGODB_URI;
 
+// Списки привилегированных пользователей
+const ADMINS = ['zhukerrom2012@gmail.com']; 
+
 app.use(cors());
 app.use(bodyParser.json({ limit: '50mb' }));
 app.use(bodyParser.urlencoded({ limit: '50mb', extended: true }));
@@ -30,7 +33,7 @@ const userSchema = new mongoose.Schema({
   fontSize: { type: String, default: 'medium' },
   isModerator: { type: Boolean, default: false },
   isOfficial: { type: Boolean, default: false },
-  isBetaTester: { type: Boolean, default: false },
+  isBetaTester: { type: Boolean, default: true }, // ВСЕ ПО УМОЛЧАНИЮ БЕТА-ТЕСТЕРЫ
   isBlockedByMod: { type: Boolean, default: false },
   blockedUsers: [String],
   lastSeen: { type: Date, default: Date.now }
@@ -91,6 +94,12 @@ async function connectToDatabase() {
       { id: 'group1', name: 'Общий чат', type: 'group', avatar: '👥', members: [] }
     ]);
   }
+
+  // ОБНОВЛЕНИЕ ПРАВ ДЛЯ ВСЕХ ПОЛЬЗОВАТЕЛЕЙ (Бета-тест всем, админ только избранным)
+  await User.updateMany({}, { $set: { isBetaTester: true } });
+  await User.updateMany({ email: { $nin: ADMINS } }, { $set: { isOfficial: false, isModerator: false } });
+  await User.updateMany({ email: { $in: ADMINS } }, { $set: { isOfficial: true, isModerator: true } });
+
   return cachedDb;
 }
 
@@ -100,12 +109,7 @@ const useDB = async (req, res, next) => {
     await connectToDatabase(); 
     next(); 
   } catch (e) { 
-    console.error('DB Middleware Error:', e.message);
-    res.status(503).json({ 
-      error: 'DB Connection Error', 
-      details: e.message,
-      hint: 'Check MONGODB_URI in Netlify Environment Variables and Network Access in MongoDB Atlas'
-    }); 
+    res.status(503).json({ error: 'DB Connection Error', details: e.message }); 
   }
 };
 
@@ -140,6 +144,15 @@ router.post('/auth/verify', useDB, async (req, res) => {
   if (auth) {
     let user = await User.findOne({ email });
     if (!user) return res.json({ status: 'new_user', email });
+
+    // Обновление прав
+    user.isBetaTester = true; // Всем бета-тест
+    if (ADMINS.includes(email)) {
+      user.isOfficial = true;
+      user.isModerator = true;
+    }
+    await user.save();
+
     const token = jwt.sign({ id: user.id, email: user.email }, SECRET_KEY);
     res.json({ status: 'ok', token, user });
   } else res.status(400).json({ message: 'Invalid code' });
@@ -147,7 +160,22 @@ router.post('/auth/verify', useDB, async (req, res) => {
 
 router.post('/auth/register', useDB, async (req, res) => {
   const { email, name, surname, avatar, bio } = req.body;
-  const newUser = new User({ id: Date.now().toString(), email, name, surname, avatar: avatar || name[0], bio: bio || '', lastSeen: new Date() });
+  
+  const isAdmin = ADMINS.includes(email);
+
+  const newUser = new User({ 
+    id: Date.now().toString(), 
+    email, 
+    name, 
+    surname, 
+    avatar: avatar || (name ? name[0] : '?'), 
+    bio: bio || '', 
+    lastSeen: new Date(),
+    isOfficial: isAdmin,
+    isModerator: isAdmin,
+    isBetaTester: true // Всем бета-тест
+  });
+  
   await newUser.save();
   await Chat.updateMany({ type: { $in: ['group', 'bot'] } }, { $addToSet: { members: newUser.id } });
   const token = jwt.sign({ id: newUser.id, email: newUser.email }, SECRET_KEY);
@@ -176,6 +204,13 @@ router.get('/users/search', useDB, authenticate, async (req, res) => {
   res.json(results);
 });
 
+// ПОЛУЧЕНИЕ КОНКРЕТНОГО ПОЛЬЗОВАТЕЛЯ (Исправляет 404)
+router.get('/users/:userId', useDB, authenticate, async (req, res) => {
+  const user = await User.findOne({ id: req.params.userId });
+  if (user) res.json(user);
+  else res.status(404).json({ message: 'User not found' });
+});
+
 // --- CHATS & MESSAGES ---
 router.get('/chats', useDB, authenticate, async (req, res) => {
   const chats = await Chat.find({ members: req.user.id });
@@ -183,7 +218,12 @@ router.get('/chats', useDB, authenticate, async (req, res) => {
     if (c.type === 'private') {
       const otherId = c.members.find(m => m !== req.user.id);
       const other = await User.findOne({ id: otherId });
-      return { ...c.toObject(), name: other?.name || 'User', avatar: other?.avatar || '👤' };
+      return { 
+        ...c.toObject(), 
+        name: other ? `${other.name} ${other.surname || ''}` : 'Пользователь', 
+        avatar: other?.avatar || '👤',
+        lastSeen: other?.lastSeen
+      };
     }
     return c;
   }));
@@ -226,6 +266,8 @@ router.get('/admin/users', useDB, authenticate, async (req, res) => {
   const users = await User.find({});
   res.json(users);
 });
+
+router.get('/hello', (req, res) => res.json({ message: "API is working!" }));
 
 app.use('/.netlify/functions/api', router);
 app.use('/api', router);
