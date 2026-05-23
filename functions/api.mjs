@@ -64,8 +64,13 @@ const AuthCode = mongoose.models.AuthCode || mongoose.model('AuthCode', authCode
 let cachedDb = null;
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
-  if (!MONGODB_URI) throw new Error('MONGODB_URI is missing in environment variables');
-  cachedDb = await mongoose.connect(MONGODB_URI);
+  if (!MONGODB_URI) throw new Error('MONGODB_URI is missing');
+  
+  console.log("Connecting to MongoDB...");
+  cachedDb = await mongoose.connect(MONGODB_URI, { 
+    serverSelectionTimeoutMS: 5000, // Ждем максимум 5 секунд
+    connectTimeoutMS: 10000 
+  });
   return cachedDb;
 }
 
@@ -145,4 +150,3 @@ app.use('/api', router);
 app.use('/', router);
 
 export const handler = serverless(app);
-
