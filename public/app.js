@@ -459,6 +459,10 @@ function showToast(message) {
 }
 
 async function selectChat(chatId, isTemp = false) {
+    if (chatId === 'znakAI') {
+        showToast("Бот временно не доступен");
+        return;
+    }
     lastMessagesJson = ""; // Сбрасываем кэш сообщений при смене чата
     replyToMsg = null;
     forwardFromMsg = null;
@@ -1536,7 +1540,7 @@ async function loadAdminStats() {
 
         // Render Chart
         const ctx = document.getElementById('admin-stats-chart');
-        if (ctx && stats.chartData) {
+        if (ctx && stats.chartData && stats.chartData.labels) {
             console.log('Rendering chart with data:', stats.chartData);
             if (adminChart) adminChart.destroy();
             
@@ -1829,24 +1833,41 @@ function initAll() {
     // Main UI listeners
     if (elements.mainMenuBtn) {
         elements.mainMenuBtn.onclick = async (e) => {
+            // Update UI immediately if we have cached data
+            if (currentUser) {
+                const dName = document.getElementById('drawer-name');
+                const dEmail = document.getElementById('drawer-email');
+                const dAvatar = document.getElementById('drawer-avatar');
+                const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
+                if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
+                if (dEmail) dEmail.innerText = currentUser.email;
+                if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
+                if (elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
+            }
+
             const token = localStorage.getItem('token');
             if (token) {
-                const res = await fetch(`${API_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${token}` } });
-                if (res.ok) {
-                    currentUser = await res.json();
-                    applyUserSettings(currentUser);
-                }
+                fetch(`${API_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${token}` } })
+                    .then(res => res.ok ? res.json() : null)
+                    .then(user => {
+                        if (user) {
+                            currentUser = user;
+                            applyUserSettings(currentUser);
+                            // Update UI again if it was already open
+                            if (elements.sideDrawer && !elements.sideDrawer.classList.contains('hidden')) {
+                                const dName = document.getElementById('drawer-name');
+                                const dEmail = document.getElementById('drawer-email');
+                                const dAvatar = document.getElementById('drawer-avatar');
+                                const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
+                                if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
+                                if (dEmail) dEmail.innerText = currentUser.email;
+                                if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
+                            }
+                        }
+                    }).catch(err => console.error("Drawer update error:", err));
             }
             
-            if (!currentUser) return;
-            const dName = document.getElementById('drawer-name');
-            const dEmail = document.getElementById('drawer-email');
-            const dAvatar = document.getElementById('drawer-avatar');
-            const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
-            if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
-            if (dEmail) dEmail.innerText = currentUser.email;
-            if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
-            if (elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
+            if (!currentUser && elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
         };
     }
 
