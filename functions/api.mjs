@@ -96,7 +96,17 @@ async function connectToDatabase() {
 
 // Middleware for DB and Auth
 const useDB = async (req, res, next) => {
-  try { await connectToDatabase(); next(); } catch (e) { res.status(503).json({ error: 'DB Connection Error' }); }
+  try { 
+    await connectToDatabase(); 
+    next(); 
+  } catch (e) { 
+    console.error('DB Middleware Error:', e.message);
+    res.status(503).json({ 
+      error: 'DB Connection Error', 
+      details: e.message,
+      hint: 'Check MONGODB_URI in Netlify Environment Variables and Network Access in MongoDB Atlas'
+    }); 
+  }
 };
 
 const authenticate = async (req, res, next) => {
