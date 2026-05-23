@@ -457,7 +457,7 @@ async function selectChat(chatId, isTemp = false) {
         return;
     }
 
-    // Reset state
+    lastMessagesJson = ""; // Сбрасываем кэш сообщений при смене чата
     replyToMsg = null;
     forwardFromMsg = null;
     isEditing = false;
@@ -540,6 +540,8 @@ async function selectChat(chatId, isTemp = false) {
 
 let userCache = {}; // Кэш для пользователей, чтобы не запрашивать их постоянно
 
+let lastMessagesJson = ""; // Храним слепок последних сообщений
+
 async function loadMessages() {
     if (!activeChatId) return;
     const token = localStorage.getItem('token');
@@ -549,14 +551,18 @@ async function loadMessages() {
             headers: { 'Authorization': `Bearer ${token}` }
         });
         
-        if (res.status === 503) {
-            console.log('Database connecting...');
-            return;
-        }
+        if (res.status === 503) return;
         
         const messages = await res.json();
+        const currentJson = JSON.stringify(messages);
         
-        // Если в кэше нет нужных пользователей, запрашиваем только их или всех один раз
+        // Если сообщения не изменились, ничего не перерисовываем!
+        if (currentJson === lastMessagesJson) {
+            return;
+        }
+        lastMessagesJson = currentJson;
+
+        // Загружаем кэш пользователей только если его нет
         if (Object.keys(userCache).length === 0) {
             const usersRes = await fetch(`${API_URL}/api/admin/users`, {
                 headers: { 'Authorization': `Bearer ${token}` }
