@@ -90,6 +90,18 @@ const notificationSound = new Audio('https://assets.mixkit.co/active_storage/sfx
 // DOM Elements (fetched inside init to ensure they exist)
 let elements = {};
 
+function setLoading(btnId, isLoading) {
+    const btn = document.getElementById(btnId);
+    if (!btn) return;
+    if (isLoading) {
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+    } else {
+        btn.classList.remove('btn-loading');
+        btn.disabled = false;
+    }
+}
+
 function getElements() {
     elements = {
         authContainer: document.getElementById('auth-container'),
@@ -120,50 +132,66 @@ async function sendCode() {
     const email = document.getElementById('email-input').value;
     if (!email) return alert('Введите email');
     
-    // We allow re-logging into existing accounts to update tokens or if session was lost
-    const res = await fetch(`${API_URL}/api/auth/send-code`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email })
-    });
-    const data = await res.json();
-    alert(`Код отправлен! Проверьте консоль сервера. (Для отладки: ${data.debugCode})`);
-    
-    elements.emailStep.classList.add('hidden');
-    elements.codeStep.classList.remove('hidden');
+    setLoading('send-code-btn', true);
+    try {
+        const res = await fetch(`${API_URL}/api/auth/send-code`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email })
+        });
+        const data = await res.json();
+        
+        showToast(`Код отправлен! Проверьте почту.`);
+        console.log(`Debug code: ${data.debugCode}`);
+        
+        elements.emailStep.classList.add('hidden');
+        elements.codeStep.classList.remove('hidden');
+    } catch (e) {
+        alert('Ошибка при отправке кода');
+    } finally {
+        setLoading('send-code-btn', false);
+    }
 }
 
 async function verifyCode() {
     const email = document.getElementById('email-input').value;
     const code = document.getElementById('code-input').value;
-    
-    const res = await fetch(`${API_URL}/api/auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, code })
-    });
-    
-    const data = await res.json();
+    if (!code) return alert('Введите код');
 
-    if (res.status === 403) {
-        if (data.status === 'blocked') {
-            showToast(data.message);
-            return;
+    setLoading('verify-code-btn', true);
+    try {
+        const res = await fetch(`${API_URL}/api/auth/verify`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, code })
+        });
+        
+        const data = await res.json();
+
+        if (res.status === 403) {
+            if (data.status === 'blocked') {
+                showToast(data.message);
+                return;
+            }
         }
-    }
 
-    if (!res.ok) {
-        return alert(data.message || 'Ошибка при проверке кода');
-    }
+        if (!res.ok) {
+            return alert(data.message || 'Ошибка при проверке кода');
+        }
 
-    if (data.status === 'new_user') {
-        elements.codeStep.classList.add('hidden');
-        elements.registerStep.classList.remove('hidden');
-    } else if (data.status === 'ok') {
-        saveAccount(data.token, data.user);
-        login(data.token, data.user);
-    } else {
-        alert('Неверный код');
+        if (data.status === 'new_user') {
+            elements.codeStep.classList.add('hidden');
+            elements.registerStep.classList.remove('hidden');
+        } else if (data.status === 'ok') {
+            saveAccount(data.token, data.user);
+            login(data.token, data.user);
+        } else {
+            alert('Неверный код');
+        }
+    } catch (e) {
+        alert('Ошибка при проверке кода');
+    } finally {
+        setLoading('verify-code-btn', false);
     }
 }
 
@@ -173,16 +201,25 @@ async function register() {
     const surname = document.getElementById('surname-input').value;
     const bio = document.getElementById('bio-input').value;
     
-    const res = await fetch(`${API_URL}/api/auth/register`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, name, surname, bio })
-    });
-    
-    const data = await res.json();
-    if (data.status === 'ok') {
-        saveAccount(data.token, data.user);
-        login(data.token, data.user);
+    if (!name) return alert('Введите имя');
+
+    setLoading('register-btn', true);
+    try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, name, surname, bio })
+        });
+        
+        const data = await res.json();
+        if (data.status === 'ok') {
+            saveAccount(data.token, data.user);
+            login(data.token, data.user);
+        }
+    } catch (e) {
+        alert('Ошибка при регистрации');
+    } finally {
+        setLoading('register-btn', false);
     }
 }
 
@@ -501,46 +538,59 @@ async function selectChat(chatId, isTemp = false) {
     if (window.innerWidth <= 768 && sidebar) sidebar.classList.add('collapsed');
 }
 
+let userCache = {}; // Кэш для пользователей, чтобы не запрашивать их постоянно
+
 async function loadMessages() {
     if (!activeChatId) return;
     const token = localStorage.getItem('token');
-    const res = await fetch(`${API_URL}/api/messages/${activeChatId}`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const messages = await res.json();
     
-    // Fetch users for names/avatars
-    const chat = chats.find(c => c.id === activeChatId);
-    let userMap = {};
-    const usersRes = await fetch(`${API_URL}/api/admin/users`, {
-        headers: { 'Authorization': `Bearer ${token}` }
-    });
-    if (usersRes.ok) {
-        const allUsers = await usersRes.json();
-        allUsers.forEach(u => userMap[u.id] = u);
-    }
-
-    const needsReadUpdate = messages.some(m => m.senderId !== currentUser.id && (!m.readBy || !m.readBy.includes(currentUser.id)));
-    if (needsReadUpdate) {
-        const unreadIds = messages.filter(m => m.senderId !== currentUser.id && (!m.readBy || !m.readBy.includes(currentUser.id))).map(m => m.id);
-        if (unreadIds.length > 0) {
-            fetch(`${API_URL}/api/messages/read`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-                body: JSON.stringify({ messageIds: unreadIds })
-            });
+    try {
+        const res = await fetch(`${API_URL}/api/messages/${activeChatId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        });
+        
+        if (res.status === 503) {
+            console.log('Database connecting...');
+            return;
         }
-    }
+        
+        const messages = await res.json();
+        
+        // Если в кэше нет нужных пользователей, запрашиваем только их или всех один раз
+        if (Object.keys(userCache).length === 0) {
+            const usersRes = await fetch(`${API_URL}/api/admin/users`, {
+                headers: { 'Authorization': `Bearer ${token}` }
+            });
+            if (usersRes.ok) {
+                const allUsers = await usersRes.json();
+                allUsers.forEach(u => userCache[u.id] = u);
+            }
+        }
 
-    if (messages.length > 0) {
-        const latestMsg = messages[messages.length - 1];
-        const lastKnownId = lastMessageIds[activeChatId];
-        if (lastKnownId && latestMsg.id !== lastKnownId && latestMsg.senderId !== currentUser.id) notifyNewMessage(latestMsg);
-        lastMessageIds[activeChatId] = latestMsg.id;
+        const needsReadUpdate = messages.some(m => m.senderId !== currentUser.id && (!m.readBy || !m.readBy.includes(currentUser.id)));
+        if (needsReadUpdate) {
+            const unreadIds = messages.filter(m => m.senderId !== currentUser.id && (!m.readBy || !m.readBy.includes(currentUser.id))).map(m => m.id);
+            if (unreadIds.length > 0) {
+                fetch(`${API_URL}/api/messages/read`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+                    body: JSON.stringify({ messageIds: unreadIds })
+                });
+            }
+        }
+
+        if (messages.length > 0) {
+            const latestMsg = messages[messages.length - 1];
+            const lastKnownId = lastMessageIds[activeChatId];
+            if (lastKnownId && latestMsg.id !== lastKnownId && latestMsg.senderId !== currentUser.id) notifyNewMessage(latestMsg);
+            lastMessageIds[activeChatId] = latestMsg.id;
+        }
+        
+        messages.forEach(m => { m.read = m.readBy && m.readBy.length > 1; });
+        renderMessages(messages, userCache);
+    } catch (e) {
+        console.error('Load messages error:', e);
     }
-    
-    messages.forEach(m => { m.read = m.readBy && m.readBy.length > 1; });
-    renderMessages(messages, userMap);
 }
 
 function notifyNewMessage(msg) {
