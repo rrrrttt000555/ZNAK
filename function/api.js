@@ -203,9 +203,9 @@ router.post('/messages', async (req, res) => {
   } catch(e) { res.sendStatus(403); }
 });
 
-// Монтируем роутер по всем возможным путям
-app.use('/api', router);
+// Универсальный обработчик для Netlify
 app.use('/.netlify/functions/api', router);
-app.use('/', router); // Добавляем корень для надежности
+app.use('/api', router);
+app.use('/', router);
 
 export const handler = serverless(app);
