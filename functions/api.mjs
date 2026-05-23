@@ -41,7 +41,10 @@ const chatSchema = new mongoose.Schema({
   name: String,
   type: String, 
   avatar: String,
-  members: { type: [String], index: true }
+  description: String,
+  members: { type: [String], index: true },
+  ownerId: String,
+  isPublic: { type: Boolean, default: false }
 });
 
 const messageSchema = new mongoose.Schema({
@@ -49,7 +52,8 @@ const messageSchema = new mongoose.Schema({
   chatId: { type: String, index: true },
   senderId: String,
   text: String,
-  time: { type: Date, default: Date.now, index: true }
+  time: { type: Date, default: Date.now, index: true },
+  readBy: [String]
 });
 
 const authCodeSchema = new mongoose.Schema({
@@ -65,40 +69,29 @@ let cachedDb = null;
 async function connectToDatabase() {
   if (cachedDb && mongoose.connection.readyState === 1) return cachedDb;
   if (!MONGODB_URI) throw new Error('MONGODB_URI is missing');
-  cachedDb = await mongoose.connect(MONGODB_URI, { 
-    serverSelectionTimeoutMS: 5000,
-    connectTimeoutMS: 10000 
-  });
+  cachedDb = await mongoose.connect(MONGODB_URI, { serverSelectionTimeoutMS: 5000 });
   return cachedDb;
 }
 
-router.get('/hello', (req, res) => res.json({ message: "API is working!", mongoStatus: mongoose.connection.readyState }));
+// --- API Routes ---
+
+router.get('/hello', (req, res) => res.json({ message: "API is working!" }));
 
 router.post('/auth/send-code', async (req, res) => {
   const { email } = req.body;
   const code = Math.floor(100000 + Math.random() * 900000).toString();
-  
   try {
     await connectToDatabase();
     await AuthCode.findOneAndUpdate({ email }, { code }, { upsert: true });
-    
     const transporter = nodemailer.createTransport({
       host: 'smtp.gmail.com', port: 465, secure: true,
       auth: { user: 'ghhtu6u7@gmail.com', pass: 'ikph notx bnvb avgf' }
     });
-
     try {
-      await transporter.sendMail({
-        from: '"ZNAK Messenger" <ghhtu6u7@gmail.com>', to: email,
-        subject: "Ваш код ZNAK", text: `Код: ${code}`
-      });
+      await transporter.sendMail({ from: '"ZNAK" <ghhtu6u7@gmail.com>', to: email, subject: "Код ZNAK", text: `Код: ${code}` });
       res.json({ message: 'Code sent', debugCode: code });
-    } catch (mailError) {
-      res.json({ message: 'Code generated (Mail failed)', debugCode: code, error: mailError.message });
-    }
-  } catch (dbError) {
-    res.status(503).json({ message: 'Database connection failed', error: dbError.message });
-  }
+    } catch (e) { res.json({ message: 'Mail failed', debugCode: code }); }
+  } catch (e) { res.status(503).json({ error: e.message }); }
 });
 
 router.post('/auth/verify', async (req, res) => {
@@ -111,9 +104,7 @@ router.post('/auth/verify', async (req, res) => {
       if (!user) return res.json({ status: 'new_user', email });
       const token = jwt.sign({ id: user.id }, SECRET_KEY);
       res.json({ status: 'ok', token, user });
-    } else {
-      res.status(400).json({ message: 'Invalid code' });
-    }
+    } else res.status(400).json({ message: 'Invalid code' });
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -128,13 +119,52 @@ router.post('/auth/register', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+router.post('/user/ping', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    await connectToDatabase();
+    const user = await User.findOneAndUpdate({ id: decoded.id }, { lastSeen: new Date() }, { new: true });
+    res.json({ status: 'ok', lastSeen: user?.lastSeen });
+  } catch (e) { res.sendStatus(403); }
+});
+
+router.get('/user/me', async (req, res) => {
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
+  if (!token) return res.sendStatus(401);
+  try {
+    const decoded = jwt.verify(token, SECRET_KEY);
+    await connectToDatabase();
+    const user = await User.findOne({ id: decoded.id });
+    res.json(user);
+  } catch (e) { res.sendStatus(403); }
+});
+
+router.get('/users/search', async (req, res) => {
+  const { query } = req.query;
+  if (!query) return res.json([]);
+  try {
+    await connectToDatabase();
+    const results = await User.find({
+      $or: [
+        { name: { $regex: query, $options: 'i' } },
+        { username: { $regex: query, $options: 'i' } }
+      ]
+    }).limit(10);
+    res.json(results);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
 router.get('/chats', async (req, res) => {
   const authHeader = req.headers['authorization'];
   const token = authHeader && authHeader.split(' ')[1];
   if (!token) return res.sendStatus(401);
   try {
-    await connectToDatabase();
     const decoded = jwt.verify(token, SECRET_KEY);
+    await connectToDatabase();
     const chats = await Chat.find({ members: decoded.id });
     res.json(chats);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -152,12 +182,21 @@ router.post('/messages', async (req, res) => {
   const { chatId, text, senderId } = req.body;
   try {
     await connectToDatabase();
-    const msg = new Message({ id: Date.now().toString(), chatId, senderId, text });
+    const msg = new Message({ id: Date.now().toString(), chatId, senderId, text, readBy: [senderId] });
     await msg.save();
     res.json(msg);
   } catch (e) { res.status(500).json({ error: e.message }); }
 });
 
+router.get('/admin/users', async (req, res) => {
+  try {
+    await connectToDatabase();
+    const users = await User.find({});
+    res.json(users);
+  } catch (e) { res.status(500).json({ error: e.message }); }
+});
+
+// Монтируем роутер
 app.use('/.netlify/functions/api', router);
 app.use('/api', router);
 app.use('/', router);
