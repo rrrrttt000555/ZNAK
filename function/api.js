@@ -203,8 +203,9 @@ router.post('/messages', async (req, res) => {
   } catch(e) { res.sendStatus(403); }
 });
 
-// Монтируем роутер по обоим путям для надежности
+// Монтируем роутер по всем возможным путям
 app.use('/api', router);
 app.use('/.netlify/functions/api', router);
+app.use('/', router); // Добавляем корень для надежности
 
 export const handler = serverless(app);
