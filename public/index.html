@@ -85,8 +85,10 @@
             <div class="chat-active hidden">
                 <header class="chat-header">
                     <div id="normal-header" class="chat-header-content">
-                        <div class="back-btn"><i class="fas fa-arrow-left"></i></div>
-                        <div class="chat-info">
+                        <button id="mobile-back-btn" class="menu-btn mobile-only" style="margin-right: 10px;">
+                            <i class="fas fa-arrow-left"></i>
+                        </button>
+                        <div class="chat-info" onclick="showChatInfoFromHeader()">
                             <div class="chat-avatar" id="active-chat-avatar"></div>
                             <div class="chat-details">
                                 <h4 id="active-chat-name"></h4>
