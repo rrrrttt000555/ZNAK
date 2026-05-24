@@ -1954,8 +1954,7 @@ function initAll() {
     // Main UI listeners
     if (elements.mainMenuBtn) {
         const openMenu = async (e) => {
-            if (e) e.preventDefault();
-            console.log('Menu button clicked');
+            console.log('Menu action triggered');
             
             // Update UI immediately if we have cached data
             if (currentUser) {
@@ -1994,8 +1993,12 @@ function initAll() {
             if (!currentUser && elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
         };
 
+        elements.mainMenuBtn.onclick = openMenu;
         elements.mainMenuBtn.addEventListener('click', openMenu);
-        elements.mainMenuBtn.addEventListener('touchstart', openMenu, { passive: false });
+        elements.mainMenuBtn.addEventListener('touchend', (e) => {
+            e.preventDefault();
+            openMenu();
+        });
     }
 
     if (elements.drawerOverlay) elements.drawerOverlay.onclick = () => {
