@@ -609,11 +609,6 @@ function showToast(message) {
 }
 
 async function selectChat(chatId, isTemp = false) {
-    if (chatId === 'znakAI') {
-        showToast("Бот временно не доступен");
-        return;
-    }
-
     // Mobile view handling
     const sidebar = document.querySelector('.sidebar');
     const chatWindow = document.querySelector('.chat-window');
