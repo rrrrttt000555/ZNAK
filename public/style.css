@@ -999,6 +999,63 @@ th { color: var(--text-secondary); font-weight: 500; }
 /* Toast Notifications */
 .toast-container {
     position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 10000;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Typing Indicator & Wave Animation */
+#typing-container {
+    height: 18px; /* Reserve space */
+}
+
+.typing-indicator {
+    font-size: 12px;
+    color: var(--primary-color);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    animation: fadeIn 0.3s ease;
+}
+
+.typing-dots {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+}
+
+.typing-dots span {
+    width: 4px;
+    height: 4px;
+    background-color: var(--primary-color);
+    border-radius: 50%;
+    display: inline-block;
+    animation: wave 1.3s infinite ease-in-out;
+}
+
+.typing-dots span:nth-child(2) {
+    animation-delay: 0.2s;
+}
+
+.typing-dots span:nth-child(3) {
+    animation-delay: 0.4s;
+}
+
+@keyframes wave {
+    0%, 60%, 100% {
+        transform: translateY(0);
+    }
+    30% {
+        transform: translateY(-5px);
+    }
+}
+
+.toast-container {
+    position: fixed;
     top: 20px;
     right: 20px;
     z-index: 9999;
