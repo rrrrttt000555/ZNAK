@@ -343,19 +343,18 @@ async function callSambaNova(text, userLang = 'en') {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "Meta-Llama-3.1-8B-Instruct", 
+        model: "Llama-3.1-8B-Instruct", 
         messages: [
           { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
           { role: "user", content: text }
-        ],
-        temperature: 0.7
+        ]
       })
     });
 
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('SambaNova API Error:', response.status, errorData);
-      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
+      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'} (Model: Llama-3.1-8B-Instruct)`;
     }
 
     const data = await response.json();
