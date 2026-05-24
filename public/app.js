@@ -580,9 +580,6 @@ async function selectChat(chatId, isTemp = false) {
     
     if (messagesInterval) clearInterval(messagesInterval);
     messagesInterval = setInterval(loadMessages, 3000);
-
-    const sidebar = document.querySelector('.sidebar');
-    if (window.innerWidth <= 768 && sidebar) sidebar.classList.add('collapsed');
 }
 
 let userCache = {}; // Кэш для пользователей, чтобы не запрашивать их постоянно
@@ -2168,12 +2165,6 @@ function initAll() {
         }
     };
     
-    const backBtn = document.querySelector('.back-btn');
-    if (backBtn) backBtn.onclick = () => {
-        const sidebar = document.querySelector('.sidebar');
-        if (sidebar) sidebar.classList.remove('collapsed');
-    };
-
     document.querySelectorAll('.menu-item').forEach(item => {
         item.onclick = async () => {
             const action = item.getAttribute('data-action');
