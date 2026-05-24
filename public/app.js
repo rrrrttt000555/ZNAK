@@ -495,6 +495,15 @@ async function selectChat(chatId, isTemp = false) {
         showToast("Бот временно не доступен");
         return;
     }
+
+    // Mobile view handling
+    const sidebar = document.querySelector('.sidebar');
+    const chatWindow = document.querySelector('.chat-window');
+    if (window.innerWidth <= 768) {
+        if (sidebar) sidebar.classList.add('hidden-mobile');
+        if (chatWindow) chatWindow.classList.remove('hidden-mobile');
+    }
+
     lastMessagesJson = ""; // Сбрасываем кэш сообщений при смене чата
     replyToMsg = null;
     forwardFromMsg = null;
@@ -1029,6 +1038,14 @@ async function deleteMessage(mode) {
 }
 
 function applyUserSettings(user) {
+    // Mobile initial state
+    if (window.innerWidth <= 768) {
+        const sidebar = document.querySelector('.sidebar');
+        const chatWindow = document.querySelector('.chat-window');
+        if (sidebar) sidebar.classList.remove('hidden-mobile');
+        if (chatWindow) chatWindow.classList.add('hidden-mobile');
+    }
+
     // Check if user is blocked
     const blockedOverlay = document.getElementById('blocked-overlay');
     if (user.isBlockedByMod) {
@@ -1981,6 +1998,18 @@ function initAll() {
     if (elements.drawerOverlay) elements.drawerOverlay.onclick = () => {
         if (elements.sideDrawer) elements.sideDrawer.classList.add('hidden');
     };
+
+    // Mobile back button
+    const mobileBackBtn = document.getElementById('mobile-back-btn');
+    if (mobileBackBtn) {
+        mobileBackBtn.onclick = () => {
+            const sidebar = document.querySelector('.sidebar');
+            const chatWindow = document.querySelector('.chat-window');
+            if (sidebar) sidebar.classList.remove('hidden-mobile');
+            if (chatWindow) chatWindow.classList.add('hidden-mobile');
+            activeChatId = null;
+        };
+    }
 
     const drawerActions = {
         'drawer-profile': () => { if (elements.sideDrawer) elements.sideDrawer.classList.add('hidden'); const modal = document.getElementById('settings-modal'); if (modal) modal.classList.remove('hidden'); },
