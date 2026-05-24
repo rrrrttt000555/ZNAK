@@ -15,24 +15,24 @@
             <button id="cancel-auth-btn" class="close-modal hidden" style="position: absolute; top: 15px; right: 15px;"><i class="fas fa-times"></i></button>
             <h1 class="logo">ZNAK</h1>
             <div id="email-step">
-                <h2>Вход в мессенджер</h2>
-                <p>Введите ваш email для получения кода</p>
+                <h2 data-t="login_title">Вход в мессенджер</h2>
+                <p data-t="login_desc">Введите ваш email для получения кода</p>
                 <input type="email" id="email-input" placeholder="Email" required>
-                <button id="send-code-btn">Продолжить</button>
+                <button id="send-code-btn" data-t="continue">Продолжить</button>
             </div>
             <div id="code-step" class="hidden">
-                <h2>Введите код</h2>
-                <p>Мы отправили 6-значный код на ваш email</p>
+                <h2 data-t="enter_code">Введите код</h2>
+                <p data-t="code_desc">Мы отправили 6-значный код на ваш email</p>
                 <input type="text" id="code-input" placeholder="000000" maxlength="6">
-                <button id="verify-code-btn">Подтвердить</button>
-                <button class="secondary-btn" id="back-to-email">Назад</button>
+                <button id="verify-code-btn" data-t="confirm">Подтвердить</button>
+                <button class="secondary-btn" id="back-to-email" data-t="back">Назад</button>
             </div>
             <div id="register-step" class="hidden">
-                <h2>Завершите регистрацию</h2>
-                <input type="text" id="name-input" placeholder="Имя" required>
-                <input type="text" id="surname-input" placeholder="Фамилия" required>
-                <textarea id="bio-input" placeholder="О себе (необязательно)"></textarea>
-                <button id="register-btn">Создать профиль</button>
+                <h2 data-t="complete_reg">Завершите регистрацию</h2>
+                <input type="text" id="name-input" placeholder="Имя" data-t-placeholder="first_name">
+                <input type="text" id="surname-input" placeholder="Фамилия" data-t-placeholder="last_name">
+                <textarea id="bio-input" placeholder="О себе (необязательно)" data-t-placeholder="bio_placeholder"></textarea>
+                <button id="register-btn" data-t="create_profile">Создать профиль</button>
             </div>
         </div>
     </div>
@@ -80,7 +80,7 @@
 
         <main class="chat-window" id="chat-window">
             <div class="no-chat-selected">
-                <p>Выберите чат, чтобы начать общение</p>
+                <p data-t="no_chat">Выберите чат, чтобы начать общение</p>
             </div>
             <div class="chat-active hidden">
                 <header class="chat-header">
@@ -147,7 +147,7 @@
         <div id="settings-modal" class="modal hidden">
             <div class="modal-content">
                 <header class="modal-header">
-                    <h3>Настройки</h3>
+                    <h3 data-t="settings">Настройки</h3>
                     <button class="close-modal"><i class="fas fa-times"></i></button>
                 </header>
                 <div class="settings-body">
@@ -160,39 +160,39 @@
                         <button id="edit-profile-btn" class="icon-btn"><i class="fas fa-pencil-alt"></i></button>
                     </div>
                     <div class="settings-section">
-                        <h4>Аккаунты</h4>
+                        <h4 data-t="accounts">Аккаунты</h4>
                         <div id="accounts-list">
                             <!-- Accounts will be listed here -->
                         </div>
-                        <button id="add-account-btn" class="secondary-btn">+ Добавить аккаунт</button>
+                        <button id="add-account-btn" class="secondary-btn" data-t="add_account">+ Добавить аккаунт</button>
                     </div>
                     <div class="settings-section">
-                        <h4>Внешний вид</h4>
+                        <h4 data-t="appearance">Внешний вид</h4>
                         <div class="setting-item">
-                            <span>Тёмная тема</span>
+                            <span data-t="dark_theme">Тёмная тема</span>
                             <label class="switch">
                                 <input type="checkbox" id="theme-toggle">
                                 <span class="slider round"></span>
                             </label>
                         </div>
                         <div class="setting-item">
-                            <span>Размер шрифта</span>
+                            <span data-t="font_size">Размер шрифта</span>
                             <select id="font-size-select">
-                                <option value="small">Мелкий</option>
-                                <option value="medium" selected>Средний</option>
-                                <option value="large">Большой</option>
+                                <option value="small" data-t="font_small">Мелкий</option>
+                                <option value="medium" selected data-t="font_medium">Средний</option>
+                                <option value="large" data-t="font_large">Большой</option>
                             </select>
                         </div>
                         <div class="setting-item">
-                            <span>Язык</span>
+                            <span data-t="language">Язык</span>
                             <select id="lang-select">
                                 <option value="ru">Русский</option>
                                 <option value="en">English</option>
                             </select>
                         </div>
                     </div>
-                    <button id="logout-btn" class="danger-btn">Выйти</button>
-                    <button id="open-delete-account-btn" class="danger-btn" style="background: transparent; border: 1px solid #f44336; color: #f44336; margin-top: 10px;">Удалить аккаунт</button>
+                    <button id="logout-btn" class="danger-btn" data-t="logout">Выйти</button>
+                    <button id="open-delete-account-btn" class="danger-btn" style="background: transparent; border: 1px solid #f44336; color: #f44336; margin-top: 10px;" data-t="delete_account">Удалить аккаунт</button>
                 </div>
             </div>
         </div>
@@ -404,23 +404,23 @@
         <div id="create-group-modal" class="modal hidden">
             <div class="modal-content">
                 <header class="modal-header">
-                    <h3>Создать группу</h3>
+                    <h3 data-t="new_group">Создать группу</h3>
                     <button class="close-create-group"><i class="fas fa-times"></i></button>
                 </header>
                 <div class="settings-body">
                     <div class="input-group">
-                        <label>Название группы</label>
-                        <input type="text" id="group-name-input" placeholder="Введите название">
+                        <label data-t="group_name">Название группы</label>
+                        <input type="text" id="group-name-input" data-t-placeholder="enter_name" placeholder="Введите название">
                     </div>
                     <div class="input-group">
-                        <label>Описание</label>
-                        <textarea id="group-desc-input" placeholder="О чем эта группа?"></textarea>
+                        <label data-t="desc_label">Описание</label>
+                        <textarea id="group-desc-input" data-t-placeholder="desc_placeholder_group" placeholder="О чем эта группа?"></textarea>
                     </div>
                     <div class="input-group">
-                        <label>Аватар (эмодзи или ссылка)</label>
+                        <label data-t="avatar_label">Аватар (эмодзи или ссылка)</label>
                         <input type="text" id="group-avatar-input" placeholder="👥">
                     </div>
-                    <button id="confirm-create-group">Создать</button>
+                    <button id="confirm-create-group" data-t="create">Создать</button>
                 </div>
             </div>
         </div>
@@ -429,26 +429,26 @@
         <div id="create-channel-modal" class="modal hidden">
             <div class="modal-content">
                 <header class="modal-header">
-                    <h3>Создать канал</h3>
+                    <h3 data-t="new_channel">Создать канал</h3>
                     <button class="close-create-channel"><i class="fas fa-times"></i></button>
                 </header>
                 <div class="settings-body">
                     <div class="input-group">
-                        <label>Название канала</label>
-                        <input type="text" id="channel-name-input" placeholder="Введите название">
+                        <label data-t="channel_name">Название канала</label>
+                        <input type="text" id="channel-name-input" data-t-placeholder="enter_name" placeholder="Введите название">
                     </div>
                     <div class="input-group">
-                        <label>Описание</label>
-                        <textarea id="channel-desc-input" placeholder="О чем этот канал?"></textarea>
+                        <label data-t="desc_label">Описание</label>
+                        <textarea id="channel-desc-input" data-t-placeholder="desc_placeholder_channel" placeholder="О чем этот канал?"></textarea>
                     </div>
                     <div class="input-group">
-                        <label>Тип канала</label>
+                        <label data-t="channel_type">Тип канала</label>
                         <select id="channel-type-select">
-                            <option value="public">Публичный</option>
-                            <option value="private">Приватный</option>
+                            <option value="public" data-t="public">Публичный</option>
+                            <option value="private" data-t="private">Приватный</option>
                         </select>
                     </div>
-                    <button id="confirm-create-channel">Создать</button>
+                    <button id="confirm-create-channel" data-t="create">Создать</button>
                 </div>
             </div>
         </div>
