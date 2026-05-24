@@ -1953,7 +1953,10 @@ function initAll() {
 
     // Main UI listeners
     if (elements.mainMenuBtn) {
-        elements.mainMenuBtn.onclick = async (e) => {
+        const openMenu = async (e) => {
+            if (e) e.preventDefault();
+            console.log('Menu button clicked');
+            
             // Update UI immediately if we have cached data
             if (currentUser) {
                 const dName = document.getElementById('drawer-name');
@@ -1990,6 +1993,9 @@ function initAll() {
             
             if (!currentUser && elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
         };
+
+        elements.mainMenuBtn.addEventListener('click', openMenu);
+        elements.mainMenuBtn.addEventListener('touchstart', openMenu, { passive: false });
     }
 
     if (elements.drawerOverlay) elements.drawerOverlay.onclick = () => {
@@ -1999,13 +2005,18 @@ function initAll() {
     // Mobile back button
     const mobileBackBtn = document.getElementById('mobile-back-btn');
     if (mobileBackBtn) {
-        mobileBackBtn.onclick = () => {
+        const goBack = () => {
             const sidebar = document.querySelector('.sidebar');
             const chatWindow = document.querySelector('.chat-window');
             if (sidebar) sidebar.classList.remove('hidden-mobile');
             if (chatWindow) chatWindow.classList.add('hidden-mobile');
             activeChatId = null;
         };
+        mobileBackBtn.addEventListener('click', goBack);
+        mobileBackBtn.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            goBack();
+        }, { passive: false });
     }
 
     const drawerActions = {
