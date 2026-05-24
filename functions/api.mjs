@@ -261,7 +261,29 @@ router.get('/users/:userId', useDB, authenticate, async (req, res) => {
 
 // --- CHATS & MESSAGES ---
 router.get('/chats', useDB, authenticate, async (req, res) => {
-  const chats = await Chat.find({ members: req.user.id });
+  let chats = await Chat.find({ members: req.user.id });
+  
+  // Гарантируем наличие чата с ИИ для каждого пользователя
+  const hasBot = chats.some(c => c.id === 'znakAI');
+  if (!hasBot) {
+    const botChat = await Chat.findOneAndUpdate(
+      { id: 'znakAI' },
+      { $addToSet: { members: req.user.id } },
+      { new: true, upsert: true }
+    );
+    if (botChat) {
+      // Инициализируем базовые поля, если чат только что создался
+      if (!botChat.name) {
+        botChat.name = 'znakAI';
+        botChat.type = 'bot';
+        botChat.avatar = '🤖';
+        botChat.description = 'Ваш ИИ-помощник';
+        await botChat.save();
+      }
+      chats.push(botChat);
+    }
+  }
+
   const mapped = await Promise.all(chats.map(async c => {
     if (c.type === 'private') {
       const otherId = c.members.find(m => m !== req.user.id);
