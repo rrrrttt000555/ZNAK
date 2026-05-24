@@ -88,7 +88,9 @@ let translations = {
         'avatar_label': 'Аватар (эмодзи или ссылка)',
         'channel_type': 'Тип канала',
         'public': 'Публичный',
-        'private': 'Приватный'
+        'private': 'Приватный',
+        'is_typing': 'печатает',
+        'people_typing': 'человека печатают'
     },
     'en': {
         'chats': 'Chats',
@@ -176,7 +178,9 @@ let translations = {
         'avatar_label': 'Avatar (emoji or link)',
         'channel_type': 'Channel Type',
         'public': 'Public',
-        'private': 'Private'
+        'private': 'Private',
+        'is_typing': 'is typing',
+        'people_typing': 'people are typing'
     }
 };
 
@@ -198,6 +202,24 @@ let currentTab = 'chats';
 let searchQuery = '';
 let contextMenuMsgId = null;
 let replyToMsg = null;
+let typingTimeout = null;
+
+function sendTyping() {
+    if (!activeChatId) return;
+    const token = localStorage.getItem('token');
+    if (!token) return;
+
+    if (typingTimeout) return;
+    
+    fetch(`${API_URL}/api/chats/${activeChatId}/typing`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    
+    typingTimeout = setTimeout(() => {
+        typingTimeout = null;
+    }, 2000);
+}
 let forwardFromMsg = null;
 let isEditing = false;
 let selectedMsgIds = new Set();
@@ -704,6 +726,14 @@ async function loadMessages() {
     const token = localStorage.getItem('token');
     
     try {
+        // Fetch typing status and chat info
+        fetch(`${API_URL}/api/chats/${activeChatId}`, {
+            headers: { 'Authorization': `Bearer ${token}` }
+        }).then(res => res.ok ? res.json() : null)
+          .then(chatInfo => {
+              if (chatInfo) updateTypingIndicator(chatInfo.typing);
+          });
+
         const res = await fetch(`${API_URL}/api/messages/${activeChatId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
         });
@@ -754,6 +784,57 @@ async function loadMessages() {
     } catch (e) {
         console.error('Load messages error:', e);
     }
+}
+
+function updateTypingIndicator(typingMap) {
+    const container = document.getElementById('typing-container');
+    if (!container) return;
+    
+    if (!typingMap || Object.keys(typingMap).length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    const now = new Date();
+    const typingUsers = [];
+    
+    // Convert Map-like object to entries if it's not already
+    const entries = Object.entries(typingMap);
+
+    for (const [userId, timestamp] of entries) {
+        if (userId === currentUser.id) continue;
+        
+        const typingDate = new Date(timestamp);
+        // Consider user typing if the last event was within 6 seconds
+        if (now - typingDate < 6000) {
+            const user = userCache[userId];
+            if (user) typingUsers.push(user.name);
+            else typingUsers.push(t('user'));
+        }
+    }
+
+    if (typingUsers.length === 0) {
+        container.innerHTML = '';
+        return;
+    }
+
+    let text = '';
+    if (typingUsers.length === 1) {
+        text = `${typingUsers[0]} ${t('is_typing')}`;
+    } else if (typingUsers.length > 1) {
+        text = `${typingUsers.length} ${t('people_typing')}`;
+    }
+
+    container.innerHTML = `
+        <div class="typing-indicator">
+            <span>${text}</span>
+            <div class="typing-dots">
+                <span></span>
+                <span></span>
+                <span></span>
+            </div>
+        </div>
+    `;
 }
 
 function notifyNewMessage(msg) {
@@ -2226,6 +2307,9 @@ function initAll() {
     
     if (elements.messageInput) {
         elements.messageInput.onkeypress = (e) => { if (e.key === 'Enter') sendMessage(); };
+        elements.messageInput.oninput = () => {
+            if (elements.messageInput.value.trim()) sendTyping();
+        };
     }
 
     document.querySelectorAll('.nav-item').forEach(item => {
