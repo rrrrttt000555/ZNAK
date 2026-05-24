@@ -16,7 +16,7 @@ let translations = {
         'offline': 'не в сети',
         'bot': 'Бот',
         'group': 'Группа',
-        'ai': 'Искусственный интеллект',
+        'ai': 'ИИ Помощник',
         'block': 'Заблокировать',
         'unblock': 'Разблокировать',
         'report': 'Пожаловаться',
@@ -31,7 +31,64 @@ let translations = {
         'save': 'Сохранить',
         'cancel': 'Отмена',
         'loading': 'Загрузка...',
-        'no_chat': 'Выберите чат, чтобы начать общение'
+        'no_chat': 'Выберите чат, чтобы начать общение',
+        'new_contact_click': 'Новый контакт (нажмите, чтобы написать)',
+        'ai_assistant': 'Бот-помощник',
+        'private_msg': 'Личное сообщение',
+        'channel': 'Канал',
+        'forwarded_from': 'Переслано от',
+        'login_title': 'Вход в мессенджер',
+        'login_desc': 'Введите ваш email для получения кода',
+        'enter_email': 'Введите email',
+        'server_error': 'Ошибка сервера',
+        'code_sent': 'Код отправлен! Проверьте почту.',
+        'continue': 'Продолжить',
+        'enter_code': 'Введите код',
+        'code_desc': 'Мы отправили 6-значный код на ваш email',
+        'confirm': 'Подтвердить',
+        'back': 'Назад',
+        'complete_reg': 'Завершите регистрацию',
+        'first_name': 'Имя',
+        'last_name': 'Фамилия',
+        'bio_placeholder': 'О себе (необязательно)',
+        'create_profile': 'Создать профиль',
+        'accounts': 'Аккаунты',
+        'add_account': '+ Добавить аккаунт',
+        'appearance': 'Внешний вид',
+        'dark_theme': 'Тёмная тема',
+        'font_size': 'Размер шрифта',
+        'font_small': 'Мелкий',
+        'font_medium': 'Средний',
+        'font_large': 'Большой',
+        'language': 'Язык',
+        'logout': 'Выйти',
+        'delete_account': 'Удалить аккаунт',
+        'was_long_ago': 'Был очень давно',
+        'was_ago': 'Был {} назад',
+        'minutes_short': 'мин.',
+        'hours_short': 'ч.',
+        'days_short': 'дн.',
+        'at': 'в',
+        'you': 'Вы',
+        'user': 'Пользователь',
+        'stats': 'Статистика',
+        'users': 'Пользователи',
+        'reports': 'Жалобы',
+        'info': 'Информация',
+        'description': 'Описание',
+        'members': 'Участники',
+        'management': 'Управление',
+        'group_name': 'Название группы',
+        'channel_name': 'Название канала',
+        'enter_name': 'Введите название',
+        'create': 'Создать',
+        'desc_label': 'Описание',
+        'desc_placeholder_group': 'О чем эта группа?',
+        'desc_placeholder_channel': 'О чем этот канал?',
+        'avatar_label': 'Аватар (эмодзи или ссылка)',
+        'channel_type': 'Тип канала',
+        'public': 'Публичный',
+        'private': 'Приватный'
     },
     'en': {
         'chats': 'Chats',
@@ -62,13 +119,74 @@ let translations = {
         'save': 'Save',
         'cancel': 'Cancel',
         'loading': 'Loading...',
-        'no_chat': 'Select a chat to start messaging'
+        'no_chat': 'Select a chat to start messaging',
+        'new_contact_click': 'New contact (click to message)',
+        'ai_assistant': 'AI Assistant',
+        'private_msg': 'Private message',
+        'channel': 'Channel',
+        'forwarded_from': 'Forwarded from',
+        'login_title': 'Messenger Login',
+        'login_desc': 'Enter your email to receive a code',
+        'enter_email': 'Enter email',
+        'server_error': 'Server error',
+        'code_sent': 'Code sent! Check your email.',
+        'continue': 'Continue',
+        'enter_code': 'Enter Code',
+        'code_desc': 'We sent a 6-digit code to your email',
+        'confirm': 'Confirm',
+        'back': 'Back',
+        'complete_reg': 'Complete Registration',
+        'first_name': 'First Name',
+        'last_name': 'Last Name',
+        'bio_placeholder': 'About yourself (optional)',
+        'create_profile': 'Create Profile',
+        'accounts': 'Accounts',
+        'add_account': '+ Add Account',
+        'appearance': 'Appearance',
+        'dark_theme': 'Dark Theme',
+        'font_size': 'Font Size',
+        'font_small': 'Small',
+        'font_medium': 'Medium',
+        'font_large': 'Large',
+        'language': 'Language',
+        'logout': 'Logout',
+        'delete_account': 'Delete Account',
+        'was_long_ago': 'Was online long ago',
+        'was_ago': 'Was online {} ago',
+        'minutes_short': 'min.',
+        'hours_short': 'h.',
+        'days_short': 'd.',
+        'at': 'at',
+        'you': 'You',
+        'user': 'User',
+        'stats': 'Statistics',
+        'users': 'Users',
+        'reports': 'Reports',
+        'info': 'Information',
+        'description': 'Description',
+        'members': 'Members',
+        'management': 'Management',
+        'group_name': 'Group Name',
+        'channel_name': 'Channel Name',
+        'enter_name': 'Enter name',
+        'create': 'Create',
+        'desc_label': 'Description',
+        'desc_placeholder_group': 'What is this group about?',
+        'desc_placeholder_channel': 'What is this channel about?',
+        'avatar_label': 'Avatar (emoji or link)',
+        'channel_type': 'Channel Type',
+        'public': 'Public',
+        'private': 'Private'
     }
 };
 
-function t(key) {
+function t(key, param = null) {
     const lang = (currentUser && currentUser.lang) || 'ru';
-    return (translations[lang] && translations[lang][key]) || key;
+    let text = (translations[lang] && translations[lang][key]) || (translations['ru'] && translations['ru'][key]) || key;
+    if (param !== null) {
+        text = text.replace('{}', param);
+    }
+    return text;
 }
 
 let activeChatId = null;
@@ -130,7 +248,7 @@ function getElements() {
 // Auth Functions
 async function sendCode() {
     const email = document.getElementById('email-input').value;
-    if (!email) return alert('Введите email');
+    if (!email) return alert(t('enter_email'));
     
     setLoading('send-code-btn', true);
     try {
@@ -145,10 +263,10 @@ async function sendCode() {
         
         if (!res.ok) {
             const detail = data.error ? `: ${data.error}` : '';
-            throw new Error((data.message || `Ошибка сервера: ${res.status}`) + detail);
+            throw new Error((data.message || `${t('server_error')}: ${res.status}`) + detail);
         }
         
-        showToast(`Код отправлен! Проверьте почту.`);
+        showToast(t('code_sent'));
         console.log(`Debug code: ${data.debugCode}`);
         
         elements.emailStep.classList.add('hidden');
@@ -375,7 +493,7 @@ function formatStatus(lastSeen, userId) {
     if (userId === currentUser.id) return t('online');
     
     if (isOnline(lastSeen)) return t('online');
-    if (!lastSeen || lastSeen === '1970-01-01T00:00:00.000Z') return 'Был очень давно';
+    if (!lastSeen || lastSeen === '1970-01-01T00:00:00.000Z') return t('was_long_ago');
     
     const lastSeenDate = new Date(lastSeen);
     const now = new Date();
@@ -389,11 +507,11 @@ function formatStatus(lastSeen, userId) {
     const diffDays = Math.floor(diffMs / 86400000);
     const diffMonths = diffMs / (1000 * 60 * 60 * 24 * 30);
     
-    if (diffMonths >= 2) return 'Был очень давно';
-    if (diffDays > 0) return `Был ${diffDays} дн. назад`;
-    if (diffHours > 0) return `Был ${diffHours} ч. назад`;
+    if (diffMonths >= 2) return t('was_long_ago');
+    if (diffDays > 0) return t('was_ago', `${diffDays} ${t('days_short')}`);
+    if (diffHours > 0) return t('was_ago', `${diffHours} ${t('hours_short')}`);
     
-    return `Был в ${lastSeenDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    return `${t('at')} ${lastSeenDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
 }
 
 async function renderChatList() {
@@ -442,13 +560,13 @@ async function renderChatList() {
     }
 
     elements.chatList.innerHTML = filteredChats.map(chat => {
-        let lastMsgText = chat.isTemp ? 'Новый контакт (нажмите, чтобы написать)' : '';
+        let lastMsgText = chat.isTemp ? t('new_contact_click') : '';
         if (!chat.isTemp) {
-            if (chat.id === 'znakAI') lastMsgText = 'Бот-помощник';
-            else if (chat.type === 'bot') lastMsgText = 'Бот';
-            else if (chat.type === 'group') lastMsgText = 'Групповой чат';
-            else if (chat.type === 'channel') lastMsgText = 'Канал';
-            else lastMsgText = 'Личное сообщение';
+            if (chat.id === 'znakAI') lastMsgText = t('ai_assistant');
+            else if (chat.type === 'bot') lastMsgText = t('bot');
+            else if (chat.type === 'group') lastMsgText = t('group');
+            else if (chat.type === 'channel') lastMsgText = t('channel');
+            else lastMsgText = t('private_msg');
         }
 
         const modBadge = chat.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
@@ -672,10 +790,10 @@ function renderMessages(messages, userMap = {}) {
 
     container.innerHTML = messages.map(m => {
         const isOut = m.senderId === currentUser?.id;
-        let sender = userMap[m.senderId] || (isOut ? currentUser : { name: 'User', avatar: '👤' });
+        let sender = userMap[m.senderId] || (isOut ? currentUser : { name: t('user'), avatar: '👤' });
         
         // Ensure sender exists
-        if (!sender) sender = { name: 'User', avatar: '👤' };
+        if (!sender) sender = { name: t('user'), avatar: '👤' };
 
         // Force bot name
         if (m.senderId === 'znakAI') {
@@ -689,8 +807,8 @@ function renderMessages(messages, userMap = {}) {
             else statusHtml = '<i class="fas fa-check message-status"></i>';
         }
 
-        const replyHtml = m.replyTo ? `<div class="reply-preview"><span>${m.replyTo.senderName}</span><p>${m.replyTo.text}</p></div>` : '';
-        const forwardHtml = m.forwardFrom ? `<div class="forward-preview" style="color: #4caf50; font-size: 12px; margin-bottom: 4px;"><i class="fas fa-share"></i> Переслано от <b>${m.forwardFrom.senderName}</b></div>` : '';
+        const replyHtml = m.replyTo ? `<div class="reply-preview"><span>${m.replyTo.senderName === 'Вы' ? t('you') : m.replyTo.senderName}</span><p>${m.replyTo.text}</p></div>` : '';
+        const forwardHtml = m.forwardFrom ? `<div class="forward-preview" style="color: #4caf50; font-size: 12px; margin-bottom: 4px;"><i class="fas fa-share"></i> ${t('forwarded_from')} <b>${m.forwardFrom.senderName === 'Вы' ? t('you') : m.forwardFrom.senderName}</b></div>` : '';
         const isSelected = selectedMsgIds.has(m.id);
         
         const modBadge = sender.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
@@ -1071,6 +1189,11 @@ function applyUserSettings(user) {
     document.querySelectorAll('[data-t]').forEach(el => {
         const key = el.getAttribute('data-t');
         el.innerText = t(key);
+    });
+
+    document.querySelectorAll('[data-t-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-t-placeholder');
+        el.placeholder = t(key);
     });
     
     // Update inputs placeholders
