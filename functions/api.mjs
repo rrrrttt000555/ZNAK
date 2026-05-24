@@ -49,7 +49,8 @@ const chatSchema = new mongoose.Schema({
   members: { type: [String], index: true },
   ownerId: String,
   isPublic: { type: Boolean, default: false },
-  pinnedMsgId: String
+  pinnedMsgId: String,
+  typing: { type: Map, of: Date, default: {} }
 });
 
 const messageSchema = new mongoose.Schema({
@@ -259,6 +260,13 @@ router.get('/users/:userId', useDB, authenticate, async (req, res) => {
   else res.status(404).json({ message: 'User not found' });
 });
 
+// ПОЛУЧЕНИЕ КОНКРЕТНОГО ЧАТА
+router.get('/chats/:chatId', useDB, authenticate, async (req, res) => {
+  const chat = await Chat.findOne({ id: req.params.chatId });
+  if (chat) res.json(chat);
+  else res.status(404).json({ message: 'Chat not found' });
+});
+
 // --- CHATS & MESSAGES ---
 router.get('/chats', useDB, authenticate, async (req, res) => {
   let chats = await Chat.find({ members: req.user.id });
@@ -327,6 +335,16 @@ router.get('/messages/:chatId', useDB, authenticate, async (req, res) => {
   res.json(messages);
 });
 
+router.post('/chats/:chatId/typing', useDB, authenticate, async (req, res) => {
+  const { chatId } = req.params;
+  const now = new Date();
+  await Chat.findOneAndUpdate(
+    { id: chatId },
+    { $set: { [`typing.${req.user.id}`]: now } }
+  );
+  res.json({ status: 'ok' });
+});
+
 async function callSambaNova(text, userLang = 'en') {
   const API_KEY = '7d5e6dd5-5a6e-4ec8-90b0-8f4357d53cf1';
   try {
@@ -343,7 +361,7 @@ async function callSambaNova(text, userLang = 'en') {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "Llama-3.1-8B-Instruct", 
+        model: "Meta-Llama-3.1-8B-Instruct", 
         messages: [
           { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
           { role: "user", content: text }
@@ -354,7 +372,7 @@ async function callSambaNova(text, userLang = 'en') {
     if (!response.ok) {
       const errorData = await response.json().catch(() => ({}));
       console.error('SambaNova API Error:', response.status, errorData);
-      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'} (Model: Llama-3.1-8B-Instruct)`;
+      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'} (Model: Meta-Llama-3.1-8B-Instruct)`;
     }
 
     const data = await response.json();
@@ -369,6 +387,9 @@ router.post('/messages', useDB, authenticate, async (req, res) => {
   const { chatId, text, fileData, fileName, replyTo } = req.body;
   const msg = new Message({ id: Date.now().toString(), chatId, senderId: req.user.id, text, fileData, fileName, replyTo, readBy: [req.user.id] });
   await msg.save();
+
+  // Clear typing status after sending
+  await Chat.findOneAndUpdate({ id: chatId }, { $unset: { [`typing.${req.user.id}`]: "" } });
 
   // AI response logic
   if (chatId === 'znakAI') {
