@@ -1952,53 +1952,53 @@ function initAll() {
     }
 
     // Main UI listeners
-    if (elements.mainMenuBtn) {
-        const openMenu = async (e) => {
-            console.log('Menu action triggered');
-            
-            // Update UI immediately if we have cached data
-            if (currentUser) {
-                const dName = document.getElementById('drawer-name');
-                const dEmail = document.getElementById('drawer-email');
-                const dAvatar = document.getElementById('drawer-avatar');
-                const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
-                if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
-                if (dEmail) dEmail.innerText = currentUser.email;
-                if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
-                if (elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
-            }
-
-            const token = localStorage.getItem('token');
-            if (token) {
-                fetch(`${API_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${token}` } })
-                    .then(res => res.ok ? res.json() : null)
-                    .then(user => {
-                        if (user) {
-                            currentUser = user;
-                            applyUserSettings(currentUser);
-                            // Update UI again if it was already open
-                            if (elements.sideDrawer && !elements.sideDrawer.classList.contains('hidden')) {
-                                const dName = document.getElementById('drawer-name');
-                                const dEmail = document.getElementById('drawer-email');
-                                const dAvatar = document.getElementById('drawer-avatar');
-                                const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
-                                if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
-                                if (dEmail) dEmail.innerText = currentUser.email;
-                                if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
-                            }
-                        }
-                    }).catch(err => console.error("Drawer update error:", err));
-            }
-            
-            if (!currentUser && elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
-        };
-
-        elements.mainMenuBtn.onclick = openMenu;
-        elements.mainMenuBtn.addEventListener('click', openMenu);
-        elements.mainMenuBtn.addEventListener('touchend', (e) => {
+    const openMenu = async (e) => {
+        if (e) {
             e.preventDefault();
-            openMenu();
-        });
+            e.stopPropagation();
+        }
+        console.log('Menu action triggered');
+        
+        // Update UI immediately if we have cached data
+        if (currentUser) {
+            const dName = document.getElementById('drawer-name');
+            const dEmail = document.getElementById('drawer-email');
+            const dAvatar = document.getElementById('drawer-avatar');
+            const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
+            if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
+            if (dEmail) dEmail.innerText = currentUser.email;
+            if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
+            if (elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
+        }
+
+        const token = localStorage.getItem('token');
+        if (token) {
+            fetch(`${API_URL}/api/user/me`, { headers: { 'Authorization': `Bearer ${token}` } })
+                .then(res => res.ok ? res.json() : null)
+                .then(user => {
+                    if (user) {
+                        currentUser = user;
+                        applyUserSettings(currentUser);
+                        // Update UI again if it was already open
+                        if (elements.sideDrawer && !elements.sideDrawer.classList.contains('hidden')) {
+                            const dName = document.getElementById('drawer-name');
+                            const dEmail = document.getElementById('drawer-email');
+                            const dAvatar = document.getElementById('drawer-avatar');
+                            const modBadge = currentUser.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
+                            if (dName) dName.innerHTML = `${currentUser.name} ${currentUser.surname || ''} ${modBadge}`;
+                            if (dEmail) dEmail.innerText = currentUser.email;
+                            if (dAvatar) dAvatar.innerText = currentUser.avatar || (currentUser.name ? currentUser.name[0] : '?');
+                        }
+                    }
+                }).catch(err => console.error("Drawer update error:", err));
+        }
+        
+        if (!currentUser && elements.sideDrawer) elements.sideDrawer.classList.remove('hidden');
+    };
+
+    if (elements.mainMenuBtn) {
+        elements.mainMenuBtn.addEventListener('click', openMenu);
+        elements.mainMenuBtn.addEventListener('touchend', openMenu);
     }
 
     if (elements.drawerOverlay) elements.drawerOverlay.onclick = () => {
@@ -2006,20 +2006,22 @@ function initAll() {
     };
 
     // Mobile back button
+    const goBack = (e) => {
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+        const sidebar = document.querySelector('.sidebar');
+        const chatWindow = document.querySelector('.chat-window');
+        if (sidebar) sidebar.classList.remove('hidden-mobile');
+        if (chatWindow) chatWindow.classList.add('hidden-mobile');
+        activeChatId = null;
+    };
+
     const mobileBackBtn = document.getElementById('mobile-back-btn');
     if (mobileBackBtn) {
-        const goBack = () => {
-            const sidebar = document.querySelector('.sidebar');
-            const chatWindow = document.querySelector('.chat-window');
-            if (sidebar) sidebar.classList.remove('hidden-mobile');
-            if (chatWindow) chatWindow.classList.add('hidden-mobile');
-            activeChatId = null;
-        };
         mobileBackBtn.addEventListener('click', goBack);
-        mobileBackBtn.addEventListener('touchstart', (e) => {
-            e.preventDefault();
-            goBack();
-        }, { passive: false });
+        mobileBackBtn.addEventListener('touchend', goBack);
     }
 
     const drawerActions = {
