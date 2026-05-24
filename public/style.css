@@ -512,6 +512,8 @@ button:disabled {
     display: flex;
     align-items: center;
     gap: 15px;
+    position: relative;
+    z-index: 101;
 }
 
 .search-container {
@@ -1262,6 +1264,11 @@ th { color: var(--text-secondary); font-weight: 500; }
     justify-content: center;
     align-items: center;
     font-size: 20px;
+    position: relative;
+    z-index: 102;
+    background: transparent;
+    border: none;
+    -webkit-tap-highlight-color: transparent;
 }
 
 .menu-btn:hover {
