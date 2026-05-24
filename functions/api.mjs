@@ -330,6 +330,12 @@ router.get('/messages/:chatId', useDB, authenticate, async (req, res) => {
 async function callSambaNova(text, userLang = 'en') {
   const API_KEY = '7d5e6dd5-5a6e-4ec8-90b0-8f4357d53cf1';
   try {
+    // В Node.js fetch доступен с версии 18. Если версия ниже, будет ошибка.
+    if (typeof fetch === 'undefined') {
+      console.error('Fetch is not defined. Please ensure Node.js 18+ is used.');
+      return 'AI Error: Node.js version is too old for fetch.';
+    }
+
     const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -337,7 +343,7 @@ async function callSambaNova(text, userLang = 'en') {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: "meta-llama/Llama-3.1-8B-Instruct", // Или другой доступный в SambaNova
+        model: "Meta-Llama-3.1-8B-Instruct", 
         messages: [
           { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
           { role: "user", content: text }
@@ -345,11 +351,18 @@ async function callSambaNova(text, userLang = 'en') {
         temperature: 0.7
       })
     });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      console.error('SambaNova API Error:', response.status, errorData);
+      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'}`;
+    }
+
     const data = await response.json();
     return data.choices[0].message.content;
   } catch (error) {
-    console.error('SambaNova error:', error);
-    return 'Sorry, I am having trouble connecting to my brain right now.';
+    console.error('SambaNova catch error:', error);
+    return 'Sorry, I am having trouble connecting to my brain right now. Error: ' + error.message;
   }
 }
 
