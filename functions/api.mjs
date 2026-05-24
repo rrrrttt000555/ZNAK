@@ -279,7 +279,7 @@ router.get('/chats', useDB, authenticate, async (req, res) => {
 });
 
 router.post('/chats', useDB, authenticate, async (req, res) => {
-  const { name, type, members, targetId } = req.body;
+  const { name, type, members = [], targetId, description, isPublic } = req.body;
   if (type === 'private') {
     const existing = await Chat.findOne({ type: 'private', members: { $all: [req.user.id, targetId] } });
     if (existing) return res.json(existing);
@@ -287,7 +287,15 @@ router.post('/chats', useDB, authenticate, async (req, res) => {
     await newChat.save();
     return res.json(newChat);
   }
-  const newChat = new Chat({ id: Date.now().toString(), name, type, members: [req.user.id, ...members], ownerId: req.user.id });
+  const newChat = new Chat({ 
+    id: Date.now().toString(), 
+    name, 
+    type, 
+    members: [req.user.id, ...members], 
+    ownerId: req.user.id,
+    description: description || '',
+    isPublic: !!isPublic
+  });
   await newChat.save();
   res.json(newChat);
 });
@@ -297,10 +305,51 @@ router.get('/messages/:chatId', useDB, authenticate, async (req, res) => {
   res.json(messages);
 });
 
+async function callSambaNova(text, userLang = 'en') {
+  const API_KEY = '7d5e6dd5-5a6e-4ec8-90b0-8f4357d53cf1';
+  try {
+    const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        model: "meta-llama/Llama-3.1-8B-Instruct", // Или другой доступный в SambaNova
+        messages: [
+          { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
+          { role: "user", content: text }
+        ],
+        temperature: 0.7
+      })
+    });
+    const data = await response.json();
+    return data.choices[0].message.content;
+  } catch (error) {
+    console.error('SambaNova error:', error);
+    return 'Sorry, I am having trouble connecting to my brain right now.';
+  }
+}
+
 router.post('/messages', useDB, authenticate, async (req, res) => {
   const { chatId, text, fileData, fileName, replyTo } = req.body;
   const msg = new Message({ id: Date.now().toString(), chatId, senderId: req.user.id, text, fileData, fileName, replyTo, readBy: [req.user.id] });
   await msg.save();
+
+  // AI response logic
+  if (chatId === 'znakAI') {
+    const user = await User.findOne({ id: req.user.id });
+    const aiResponse = await callSambaNova(text, user?.lang || 'ru');
+    const botMsg = new Message({
+      id: (Date.now() + 1).toString(),
+      chatId: 'znakAI',
+      senderId: 'znakAI',
+      text: aiResponse,
+      time: new Date()
+    });
+    await botMsg.save();
+  }
+
   res.json(msg);
 });
 
