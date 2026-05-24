@@ -131,11 +131,46 @@ router.post('/auth/send-code', useDB, async (req, res) => {
   const { email } = req.body;
   const code = Math.floor(100000 + Math.random() * 900000).toString();
   await AuthCode.findOneAndUpdate({ email }, { code }, { upsert: true });
-  const transporter = nodemailer.createTransport({ host: 'smtp.gmail.com', port: 465, secure: true, auth: { user: 'ghhtu6u7@gmail.com', pass: 'ikph notx bnvb avgf' } });
+  
+  const transporter = nodemailer.createTransport({ 
+    host: 'smtp.gmail.com', 
+    port: 465, 
+    secure: true, 
+    auth: { user: 'ghhtu6u7@gmail.com', pass: 'ikph notx bnvb avgf' } 
+  });
+
+  const htmlContent = `
+    <div style="font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 500px; margin: 0 auto; padding: 40px; background-color: #f9f9f9; border-radius: 24px; border: 1px solid #eee; text-align: center; color: #333;">
+      <div style="margin-bottom: 30px;">
+        <h1 style="color: #3390ec; font-size: 32px; font-weight: 800; margin: 0; letter-spacing: -1px;">ZNAK</h1>
+      </div>
+      <h2 style="font-size: 22px; font-weight: 600; margin-bottom: 10px;">Ваш код подтверждения</h2>
+      <p style="color: #707579; font-size: 16px; margin-bottom: 35px;">Используйте этот код для входа в ваш аккаунт ZNAK. Не передавайте его посторонним лицам.</p>
+      
+      <div style="background-color: #fff; padding: 25px; border-radius: 16px; border: 1px solid #e0e0e0; display: inline-block; min-width: 200px; box-shadow: 0 4px 12px rgba(0,0,0,0.03);">
+        <span style="font-size: 42px; font-weight: 800; color: #3390ec; letter-spacing: 8px; font-family: monospace;">${code}</span>
+      </div>
+      
+      <p style="color: #999; font-size: 13px; margin-top: 35px; line-height: 1.5;">Код действителен в течение 10 минут.<br>Если вы не запрашивали этот код, просто проигнорируйте это письмо.</p>
+      <div style="margin-top: 40px; border-top: 1px solid #eee; padding-top: 25px;">
+        <p style="color: #bbb; font-size: 11px; margin: 0;">© 2026 ZNAK Messenger. All rights reserved.</p>
+      </div>
+    </div>
+  `;
+
   try {
-    await transporter.sendMail({ from: '"ZNAK" <ghhtu6u7@gmail.com>', to: email, subject: "Код ZNAK", text: `Код: ${code}` });
+    await transporter.sendMail({ 
+      from: '"ZNAK" <ghhtu6u7@gmail.com>', 
+      to: email, 
+      subject: `ZNAK: ${code} — ваш код подтверждения`, 
+      text: `Ваш код подтверждения: ${code}`,
+      html: htmlContent
+    });
     res.json({ message: 'Code sent', debugCode: code });
-  } catch (e) { res.json({ message: 'Mail failed', debugCode: code }); }
+  } catch (e) { 
+    console.error('Email error:', e);
+    res.json({ message: 'Mail failed', debugCode: code }); 
+  }
 });
 
 router.post('/auth/verify', useDB, async (req, res) => {
