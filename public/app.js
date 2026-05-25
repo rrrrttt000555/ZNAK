@@ -90,7 +90,47 @@ let translations = {
         'public': 'Публичный',
         'private': 'Приватный',
         'is_typing': 'печатает',
-        'people_typing': 'человека печатают'
+        'people_typing': 'человека печатают',
+        'type_message': 'Введите сообщение...',
+        'no_description': 'Нет описания',
+        'copied': 'Скопировано!',
+        'user_blocked': 'Пользователь заблокирован',
+        'user_unblocked': 'Пользователь разблокирован',
+        'report_thanks': 'Спасибо за жалобу. Наши модераторы рассмотрят заявку при первой возможности.',
+        'enter_reason': 'Пожалуйста, опишите причину',
+        'report_error': 'Ошибка при отправке жалобы',
+        'delete_confirm_channel': 'Вы точно хотите удалить канал?',
+        'delete_confirm_group': 'Вы точно хотите удалить группу?',
+        'delete_warning': 'Это действие нельзя будет отменить.',
+        'deleted_success': 'Удалено',
+        'enter_name_error': 'Введите название',
+        'enter_email_error': 'Введите email',
+        'enter_code_error': 'Введите код',
+        'enter_name_reg_error': 'Введите имя',
+        'reg_error': 'Ошибка при регистрации',
+        'login_error': 'Ошибка при проверке кода',
+        'send_code_error': 'Ошибка при отправке кода',
+        'switch_account_error': 'Ошибка при входе в аккаунт',
+        'login_as_confirm': 'Вы уверены, что хотите войти в аккаунт этого пользователя для проверки?',
+        'login_as_loader': 'Вход в аккаунт нарушителя',
+        'switch_loader': 'Переход на другой аккаунт',
+        'admin_login': 'Войти',
+        'admin_profile': 'Профиль',
+        'admin_ban': 'Бан',
+        'admin_unban': 'Разбан',
+        'admin_give_beta': 'Дать Бету',
+        'admin_remove_beta': 'Убрать Бету',
+        'admin_stats_users': 'Пользователей',
+        'admin_stats_chats': 'Чатов',
+        'admin_stats_messages': 'Сообщений',
+        'admin_stats_reports': 'Жалоб',
+        'group_info': 'О группе',
+        'channel_info': 'О канале',
+        'profile_info': 'Профиль',
+        'reply_to_you': 'В ответ вам',
+        'reply_to_user': 'В ответ пользователю',
+        'edit_msg': 'Редактирование',
+        'send': 'Отправить'
     },
     'en': {
         'chats': 'Chats',
@@ -180,7 +220,47 @@ let translations = {
         'public': 'Public',
         'private': 'Private',
         'is_typing': 'is typing',
-        'people_typing': 'people are typing'
+        'people_typing': 'people are typing',
+        'type_message': 'Type a message...',
+        'no_description': 'No description',
+        'copied': 'Copied!',
+        'user_blocked': 'User blocked',
+        'user_unblocked': 'User unblocked',
+        'report_thanks': 'Thank you for your report. Our moderators will review it as soon as possible.',
+        'enter_reason': 'Please describe the reason',
+        'report_error': 'Error sending report',
+        'delete_confirm_channel': 'Are you sure you want to delete this channel?',
+        'delete_confirm_group': 'Are you sure you want to delete this group?',
+        'delete_warning': 'This action cannot be undone.',
+        'deleted_success': 'Deleted',
+        'enter_name_error': 'Enter name',
+        'enter_email_error': 'Enter email',
+        'enter_code_error': 'Enter code',
+        'enter_name_reg_error': 'Enter name',
+        'reg_error': 'Registration error',
+        'login_error': 'Login error',
+        'send_code_error': 'Error sending code',
+        'switch_account_error': 'Error switching account',
+        'login_as_confirm': 'Are you sure you want to log in as this user for verification?',
+        'login_as_loader': 'Logging in as violator',
+        'switch_loader': 'Switching account',
+        'admin_login': 'Login',
+        'admin_profile': 'Profile',
+        'admin_ban': 'Ban',
+        'admin_unban': 'Unban',
+        'admin_give_beta': 'Give Beta',
+        'admin_remove_beta': 'Remove Beta',
+        'admin_stats_users': 'Users',
+        'admin_stats_chats': 'Chats',
+        'admin_stats_messages': 'Messages',
+        'admin_stats_reports': 'Reports',
+        'group_info': 'Group Info',
+        'channel_info': 'Channel Info',
+        'profile_info': 'Profile',
+        'reply_to_you': 'Replying to you',
+        'reply_to_user': 'Replying to user',
+        'edit_msg': 'Editing',
+        'send': 'Send'
     }
 };
 
@@ -270,7 +350,7 @@ function getElements() {
 // Auth Functions
 async function sendCode() {
     const email = document.getElementById('email-input').value;
-    if (!email) return alert(t('enter_email'));
+    if (!email) return alert(t('enter_email_error'));
     
     setLoading('send-code-btn', true);
     try {
@@ -295,7 +375,7 @@ async function sendCode() {
         elements.codeStep.classList.remove('hidden');
     } catch (e) {
         console.error('Send code error:', e);
-        alert(`Ошибка при отправке кода: ${e.message}`);
+        alert(`${t('send_code_error')}: ${e.message}`);
     } finally {
         setLoading('send-code-btn', false);
     }
@@ -304,7 +384,7 @@ async function sendCode() {
 async function verifyCode() {
     const email = document.getElementById('email-input').value;
     const code = document.getElementById('code-input').value;
-    if (!code) return alert('Введите код');
+    if (!code) return alert(t('enter_code_error'));
 
     setLoading('verify-code-btn', true);
     try {
@@ -324,7 +404,7 @@ async function verifyCode() {
         }
 
         if (!res.ok) {
-            return alert(data.message || 'Ошибка при проверке кода');
+            return alert(data.message || t('login_error'));
         }
 
         if (data.status === 'new_user') {
@@ -334,10 +414,10 @@ async function verifyCode() {
             saveAccount(data.token, data.user);
             login(data.token, data.user);
         } else {
-            alert('Неверный код');
+            alert(t('enter_code_error'));
         }
     } catch (e) {
-        alert('Ошибка при проверке кода');
+        alert(t('login_error'));
     } finally {
         setLoading('verify-code-btn', false);
     }
@@ -349,7 +429,7 @@ async function register() {
     const surname = document.getElementById('surname-input').value;
     const bio = document.getElementById('bio-input').value;
     
-    if (!name) return alert('Введите имя');
+    if (!name) return alert(t('enter_name_reg_error'));
 
     setLoading('register-btn', true);
     try {
@@ -365,7 +445,7 @@ async function register() {
             login(data.token, data.user);
         }
     } catch (e) {
-        alert('Ошибка при регистрации');
+        alert(t('reg_error'));
     } finally {
         setLoading('register-btn', false);
     }
@@ -384,7 +464,10 @@ function saveAccount(token, user) {
 
 async function switchAccount(index) {
     const loader = document.getElementById('account-switch-loader');
-    if (loader) loader.classList.remove('hidden');
+    if (loader) {
+        document.querySelector('.loader-text').innerText = t('switch_loader');
+        loader.classList.remove('hidden');
+    }
 
     const acc = accounts[index];
     localStorage.setItem('token', acc.token);
@@ -727,12 +810,13 @@ async function loadMessages() {
     
     try {
         // Fetch typing status and chat info
-        fetch(`${API_URL}/api/chats/${activeChatId}`, {
+        const chatRes = await fetch(`${API_URL}/api/chats/${activeChatId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
-        }).then(res => res.ok ? res.json() : null)
-          .then(chatInfo => {
-              if (chatInfo) updateTypingIndicator(chatInfo.typing);
-          });
+        });
+        if (chatRes.ok) {
+            const chatInfo = await chatRes.json();
+            updateTypingIndicator(chatInfo.typing);
+        }
 
         const res = await fetch(`${API_URL}/api/messages/${activeChatId}`, {
             headers: { 'Authorization': `Bearer ${token}` }
@@ -893,7 +977,7 @@ function renderMessages(messages, userMap = {}) {
         let contentHtml = m.text;
         if (m.fileName) {
             if (m.fileData && m.fileData.startsWith('data:image')) {
-                contentHtml = `<img src="${m.fileData}" class="message-image" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="window.open('${m.fileData}')">`;
+                contentHtml = `<img src="${m.fileData}" class="message-image" style="max-width: 100%; border-radius: 8px; cursor: pointer;" onclick="openImageViewer('${m.fileData}')">`;
             } else {
                 contentHtml = `<div class="file-box"><i class="fas fa-file"></i><div class="file-info"><span>${m.fileName}</span>${m.uploading ? `<div class="progress-container"><div class="progress-bar" style="width: ${m.progress}%"></div></div>` : `<a href="${m.fileData}" download="${m.fileName}">Скачать</a>`}</div></div>`;
             }
@@ -963,21 +1047,21 @@ function showContextMenu(e, msgId) {
         if (pinText) pinText.innerText = chat.pinnedMsgId === msgId ? 'Открепить' : 'Закрепить';
     }
 
-    // Hide report for bot messages
+    const msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
+    const senderId = msgEl ? msgEl.getAttribute('data-sender-id') : null;
+    const editItem = menu.querySelector('[data-action="edit"]');
     const reportItem = menu.querySelector('[data-action="report"]');
-    const deleteItem = menu.querySelector('[data-action="delete"]');
-    
-    if (reportItem || deleteItem) {
-        const msgEl = document.querySelector(`.message[data-id="${msgId}"]`);
-        const senderId = msgEl ? msgEl.getAttribute('data-sender-id') : null;
-        
-        if (senderId === 'znakAI') {
-            if (reportItem) reportItem.classList.add('hidden');
-            // User shouldn't be able to delete bot's message "for everyone", 
-            // but they can delete it for themselves. The delete modal handles this.
-        } else {
-            if (reportItem) reportItem.classList.remove('hidden');
-        }
+
+    // Show/Hide edit for own/other messages
+    if (editItem) {
+        if (senderId === currentUser.id) editItem.classList.remove('hidden');
+        else editItem.classList.add('hidden');
+    }
+
+    // Hide report for bot messages
+    if (reportItem) {
+        if (senderId === 'znakAI') reportItem.classList.add('hidden');
+        else reportItem.classList.remove('hidden');
     }
 }
 
@@ -1608,12 +1692,12 @@ async function showChatInfo(chat) {
     if (chat.type === 'private' && targetUser) {
         infoStatus.innerText = formatStatus(targetUser.lastSeen, targetUser.id);
     } else {
-        infoStatus.innerText = chat.id === 'znakAI' ? t('ai') : (chat.type === 'bot' ? t('bot') : (chat.type === 'group' ? t('group') : 'Канал'));
+        infoStatus.innerText = chat.id === 'znakAI' ? t('ai') : (chat.type === 'bot' ? t('bot') : (chat.type === 'group' ? t('group') : t('channel')));
     }
     
-    let description = chat.description || 'Нет описания';
+    let description = chat.description || t('no_description');
     if (targetUser && targetUser.username) {
-        description = `<div class="username-link" onclick="navigator.clipboard.writeText('${targetUser.username}'); alert('Скопировано!')">${targetUser.username}</div><br>` + (targetUser.bio || 'Нет описания');
+        description = `<div class="username-link" onclick="navigator.clipboard.writeText('${targetUser.username}'); alert('${t('copied')}')">${targetUser.username}</div><br>` + (targetUser.bio || t('no_description'));
     }
     infoDesc.innerHTML = description;
     
@@ -1714,7 +1798,7 @@ async function blockUser(targetId) {
         currentUser.blockedUsers = data.blockedUsers;
         selectChat(activeChatId);
         document.getElementById('chat-info-modal').classList.add('hidden');
-        showSuccess('Пользователь заблокирован');
+        showSuccess(t('user_blocked'));
     }
 }
 
@@ -1728,7 +1812,7 @@ async function unblockUser(targetId) {
         const data = await res.json();
         currentUser.blockedUsers = data.blockedUsers;
         selectChat(activeChatId);
-        showSuccess('Пользователь разблокирован');
+        showSuccess(t('user_unblocked'));
     }
 }
 
@@ -1742,7 +1826,7 @@ async function sendReport() {
         return;
     }
     const reason = reasonInput.value.trim();
-    if (!reason) return alert('Пожалуйста, опишите причину');
+    if (!reason) return alert(t('enter_reason'));
     
     const token = localStorage.getItem('token');
     const chat = chats.find(c => c.id === activeChatId);
@@ -1759,7 +1843,7 @@ async function sendReport() {
 
     if (!targetId) {
         console.error('No targetId found for report');
-        return alert('Не удалось определить пользователя для жалобы. Попробуйте нажать на сообщение и выбрать "Пожаловаться".');
+        return alert(t('report_error'));
     }
     
     console.log('Sending report to server:', { targetId, reason, reportedText });
@@ -1775,10 +1859,10 @@ async function sendReport() {
         reasonInput.value = '';
         document.getElementById('reported-message-preview').classList.add('hidden');
         reportedTargetId = null;
-        showSuccess('Спасибо за жалобу. Наши модераторы рассмотрят заявку при первом возможности');
+        showSuccess(t('report_thanks'));
     } else {
         console.error('Failed to send report:', res.status);
-        alert('Ошибка при отправке жалобы');
+        alert(t('report_error'));
     }
 }
 
@@ -1802,10 +1886,10 @@ async function loadAdminStats() {
         const stats = await res.json();
         console.log('Stats received:', stats);
         document.getElementById('admin-stats-grid').innerHTML = `
-            <div class="stat-card"><h3>${stats.totalUsers}</h3><p>Пользователей</p></div>
-            <div class="stat-card"><h3>${stats.totalChats}</h3><p>Чатов</p></div>
-            <div class="stat-card"><h3>${stats.totalMessages}</h3><p>Сообщений</p></div>
-            <div class="stat-card"><h3>${stats.pendingReports}</h3><p>Жалоб</p></div>
+            <div class="stat-card"><h3>${stats.totalUsers}</h3><p>${t('admin_stats_users')}</p></div>
+            <div class="stat-card"><h3>${stats.totalChats}</h3><p>${t('admin_stats_chats')}</p></div>
+            <div class="stat-card"><h3>${stats.totalMessages}</h3><p>${t('admin_stats_messages')}</p></div>
+            <div class="stat-card"><h3>${stats.pendingReports}</h3><p>${t('admin_stats_reports')}</p></div>
         `;
 
         // Render Chart
@@ -1892,11 +1976,11 @@ async function loadAdminUsers() {
                         <span style="font-size: 11px;">${statusText}</span>
                         <div style="display: flex; gap: 5px;">
                             ${u.id === '1779451744698' ? '' : (u.isBlockedByMod ? 
-                                `<button onclick="window.adminDirectAction('${u.id}', 'unblock')" class="secondary-btn" style="padding: 2px 6px; width: auto; font-size: 10px;">Разбан</button>` : 
-                                `<button onclick="window.adminDirectAction('${u.id}', 'block')" class="danger-btn" style="padding: 2px 6px; width: auto; font-size: 10px;">Бан</button>`)
+                                `<button onclick="window.adminDirectAction('${u.id}', 'unblock')" class="secondary-btn" style="padding: 2px 6px; width: auto; font-size: 10px;">${t('admin_unban')}</button>` : 
+                                `<button onclick="window.adminDirectAction('${u.id}', 'block')" class="danger-btn" style="padding: 2px 6px; width: auto; font-size: 10px;">${t('admin_ban')}</button>`)
                             }
                             <button onclick="window.toggleBeta('${u.id}', ${!u.isBetaTester})" class="secondary-btn" style="padding: 2px 6px; width: auto; font-size: 10px; color: ${u.isBetaTester ? '#9c27b0' : 'inherit'}">
-                                ${u.isBetaTester ? 'Убрать Бету' : 'Дать Бету'}
+                                ${u.isBetaTester ? t('admin_remove_beta') : t('admin_give_beta')}
                             </button>
                         </div>
                     </div>
@@ -1951,16 +2035,16 @@ async function loadAdminReports() {
                 <td>
                     ${r.targetName} 
                     <div style="display: flex; gap: 5px; margin-top: 5px;">
-                        <button onclick="window.showUserProfile('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px;">Профиль</button>
-                        <button onclick="window.adminLoginAs('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px; border-color: #4caf50; color: #4caf50;">Войти</button>
+                        <button onclick="window.showUserProfile('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px;">${t('admin_profile')}</button>
+                        <button onclick="window.adminLoginAs('${r.targetId}')" class="secondary-btn" style="width: auto; padding: 2px 6px; font-size: 10px; border-color: #4caf50; color: #4caf50;">${t('admin_login')}</button>
                     </div>
                 </td>
                 <td><div style="max-width: 200px; max-height: 60px; overflow-y: auto; font-size: 11px;">${r.reportedMessage || '-'}</div></td>
                 <td>${r.reason}</td>
                 <td>
                     ${r.status === 'pending' ? `
-                        <button onclick="window.adminAction('${r.id}', 'block')" class="danger-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">Бан</button>
-                        <button onclick="window.adminAction('${r.id}', 'reject')" class="secondary-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">Откл.</button>
+                        <button onclick="window.adminAction('${r.id}', 'block')" class="danger-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">${t('admin_ban')}</button>
+                        <button onclick="window.adminAction('${r.id}', 'reject')" class="secondary-btn" style="width: auto; padding: 4px 8px; font-size: 11px;">${t('admin_action_reject')}</button>
                     ` : `<span style="font-size: 11px; font-weight: bold; color: ${r.status === 'blocked' ? '#f44336' : '#707579'}">${r.status.toUpperCase()}</span>`}
                 </td>
             </tr>
@@ -1970,11 +2054,11 @@ async function loadAdminReports() {
 window.loadAdminReports = loadAdminReports;
 
 async function adminLoginAs(userId) {
-    if (!confirm('Вы уверены, что хотите войти в аккаунт этого пользователя для проверки?')) return;
+    if (!confirm(t('login_as_confirm'))) return;
     
     const loader = document.getElementById('account-switch-loader');
     if (loader) {
-        document.querySelector('.loader-text').innerText = 'Вход в аккаунт нарушителя';
+        document.querySelector('.loader-text').innerText = t('login_as_loader');
         loader.classList.remove('hidden');
     }
 
@@ -2002,12 +2086,12 @@ async function adminLoginAs(userId) {
         setTimeout(() => {
             if (loader) {
                 loader.classList.add('hidden');
-                document.querySelector('.loader-text').innerText = 'Переход на другой аккаунт';
+                document.querySelector('.loader-text').innerText = t('switch_loader');
             }
             document.getElementById('admin-modal').classList.add('hidden');
         }, 1500);
     } else {
-        alert('Ошибка при входе в аккаунт');
+        alert(t('switch_account_error'));
         if (loader) loader.classList.add('hidden');
     }
 }
@@ -2045,7 +2129,7 @@ async function saveChatEdit() {
         document.getElementById('edit-chat-modal').classList.add('hidden');
         renderChatList();
         selectChat(updatedChat.id);
-        showSuccess('Чат обновлен');
+        showSuccess(t('status_updated'));
     }
 }
 
@@ -2057,11 +2141,11 @@ function openDeleteChat(chat) {
     const warning = document.getElementById('delete-chat-warning');
     
     if (chat.type === 'channel') {
-        title.innerText = 'Вы точно хотите удалить канал?';
-        warning.innerText = 'Канал будет удален навсегда без отмены.';
+        title.innerText = t('delete_confirm_channel');
+        warning.innerText = t('delete_warning');
     } else {
-        title.innerText = 'Вы точно хотите удалить группу?';
-        warning.innerText = 'Группа будет удалена навсегда без отмены.';
+        title.innerText = t('delete_confirm_group');
+        warning.innerText = t('delete_warning');
     }
     
     document.getElementById('delete-chat-modal').classList.remove('hidden');
@@ -2083,7 +2167,7 @@ async function confirmDeleteChat() {
         elements.noChatSelected.classList.remove('hidden');
         document.getElementById('delete-chat-modal').classList.add('hidden');
         renderChatList();
-        showSuccess('Удалено');
+        showSuccess(t('deleted_success'));
     }
 }
 
@@ -2109,16 +2193,70 @@ async function promoteModerator() {
         body: JSON.stringify({ username })
     });
     if (res.ok) {
-        alert('Пользователь назначен модератором!');
+        alert(t('moderator_promoted'));
         loadAdminUsers();
     } else {
-        alert('Пользователь не найден');
+        alert(t('user_not_found'));
+    }
+}
+
+let currentRotation = 0;
+
+function openImageViewer(src) {
+    const modal = document.getElementById('image-viewer-modal');
+    const img = document.getElementById('viewer-img');
+    const content = document.querySelector('.image-viewer-content');
+    
+    img.src = src;
+    currentRotation = 0;
+    content.style.transform = `rotate(${currentRotation}deg)`;
+    
+    modal.classList.remove('hidden');
+}
+
+function closeImageViewer() {
+    document.getElementById('image-viewer-modal').classList.add('hidden');
+}
+
+function rotateImage(e) {
+    e.stopPropagation();
+    const content = document.querySelector('.image-viewer-content');
+    currentRotation += 90;
+    content.style.transform = `rotate(${currentRotation}deg)`;
+}
+
+function downloadImage(e) {
+    e.stopPropagation();
+    const img = document.getElementById('viewer-img');
+    const link = document.createElement('a');
+    link.href = img.src;
+    link.download = 'znak_image_' + Date.now() + '.png';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+function initImageViewer() {
+    const closeBtn = document.querySelector('.image-viewer-close');
+    const rotateBtn = document.getElementById('viewer-rotate');
+    const downloadBtn = document.getElementById('viewer-download');
+    const modal = document.getElementById('image-viewer-modal');
+
+    if (closeBtn) closeBtn.onclick = closeImageViewer;
+    if (rotateBtn) rotateBtn.onclick = rotateImage;
+    if (downloadBtn) downloadBtn.onclick = downloadImage;
+    
+    if (modal) {
+        modal.onclick = (e) => {
+            if (e.target === modal || e.target.classList.contains('image-viewer-content')) closeImageViewer();
+        };
     }
 }
 
 // Initialization and Event Listeners
 function initAll() {
     getElements();
+    initImageViewer();
     
     // Auth and Account listeners
     const sendCodeBtn = document.getElementById('send-code-btn');
