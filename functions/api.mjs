@@ -347,40 +347,45 @@ router.post('/chats/:chatId/typing', useDB, authenticate, async (req, res) => {
 
 async function callSambaNova(text, userLang = 'en') {
   const API_KEY = '7d5e6dd5-5a6e-4ec8-90b0-8f4357d53cf1';
-  try {
-    // В Node.js fetch доступен с версии 18. Если версия ниже, будет ошибка.
-    if (typeof fetch === 'undefined') {
-      console.error('Fetch is not defined. Please ensure Node.js 18+ is used.');
-      return 'AI Error: Node.js version is too old for fetch.';
-    }
+  const models = ["DeepSeek-V3.1", "Meta-Llama-3.3-70B-Instruct", "Llama-3.3-70B-Instruct"];
+  
+  for (const model of models) {
+    try {
+      if (typeof fetch === 'undefined') return 'AI Error: Node version too old';
 
-    const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${API_KEY}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: "Meta-Llama-3.1-8B-Instruct", 
-        messages: [
-          { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
-          { role: "user", content: text }
-        ]
-      })
-    });
+      const response = await fetch('https://api.sambanova.ai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${API_KEY}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: model,
+          messages: [
+            { role: "system", content: `You are ZNAK AI, a helpful assistant. Always respond in the user's language (${userLang}).` },
+            { role: "user", content: text }
+          ],
+          max_tokens: 1024
+        })
+      });
 
-    if (!response.ok) {
+      if (response.ok) {
+        const data = await response.json();
+        return data.choices[0].message.content;
+      }
+      
       const errorData = await response.json().catch(() => ({}));
-      console.error('SambaNova API Error:', response.status, errorData);
-      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'} (Model: Meta-Llama-3.1-8B-Instruct)`;
+      console.error(`SambaNova Error (${model}):`, response.status, errorData);
+      
+      if (response.status === 404 || response.status === 410) continue;
+      
+      return `AI Error: ${response.status} - ${errorData.error?.message || 'Unknown error'} (Model: ${model})`;
+    } catch (error) {
+      console.error(`SambaNova Catch (${model}):`, error);
+      continue;
     }
-
-    const data = await response.json();
-    return data.choices[0].message.content;
-  } catch (error) {
-    console.error('SambaNova catch error:', error);
-    return 'Sorry, I am having trouble connecting to my brain right now. Error: ' + error.message;
   }
+  return 'Sorry, I am having trouble connecting to my brain right now. Please try again later.';
 }
 
 router.post('/messages', useDB, authenticate, async (req, res) => {
