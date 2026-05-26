@@ -11,7 +11,7 @@ let translations = {
         'new_group': 'Создать группу',
         'new_channel': 'Создать канал',
         'admin_panel': 'Админ панель',
-        'search': 'Поиск',
+        'search': 'Поиск чатов...',
         'online': 'в сети',
         'offline': 'не в сети',
         'bot': 'Бот',
@@ -130,7 +130,12 @@ let translations = {
         'reply_to_you': 'В ответ вам',
         'reply_to_user': 'В ответ пользователю',
         'edit_msg': 'Редактирование',
-        'send': 'Отправить'
+        'send': 'Отправить',
+        'unblock_action': 'РАЗБЛОКИРОВАТЬ',
+        'delete_self': 'Удалить у себя',
+        'delete_all': 'Удалить у всех',
+        'select': 'Выделить',
+        'pinned_msg': 'Закрепленное сообщение'
     },
     'en': {
         'chats': 'Chats',
@@ -141,7 +146,7 @@ let translations = {
         'new_group': 'New Group',
         'new_channel': 'New Channel',
         'admin_panel': 'Admin Panel',
-        'search': 'Search',
+        'search': 'Search chats...',
         'online': 'online',
         'offline': 'offline',
         'bot': 'Bot',
@@ -260,7 +265,13 @@ let translations = {
         'reply_to_you': 'Replying to you',
         'reply_to_user': 'Replying to user',
         'edit_msg': 'Editing',
-        'send': 'Send'
+        'send': 'Send',
+        'unblock_action': 'UNBLOCK',
+        'delete_self': 'Delete for me',
+        'delete_all': 'Delete for everyone',
+        'cancel': 'Cancel',
+        'select': 'Select',
+        'pinned_msg': 'Pinned message'
     }
 };
 
@@ -676,6 +687,9 @@ async function renderChatList() {
 
         const modBadge = chat.isOfficial ? '<i class="fas fa-check-circle mod-badge"></i>' : '';
         const onlineStatus = chat.type === 'private' && isOnline(chat.lastSeen) ? '<div class="online-dot"></div>' : '';
+        const unreadCount = chat.unreadCount || 0;
+        const unreadBadge = unreadCount > 0 ? `<div class="unread-badge">${unreadCount}</div>` : '';
+        const timeStr = chat.lastMessageTime ? new Date(chat.lastMessageTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
 
         return `
         <div class="chat-item ${activeChatId === chat.id ? 'active' : ''}" onclick="selectChat('${chat.id}', ${chat.isTemp || false})">
@@ -686,9 +700,12 @@ async function renderChatList() {
             <div class="chat-info-preview">
                 <div class="chat-top-row">
                     <span class="chat-name">${chat.name} ${modBadge}</span>
-                    <span class="chat-time">${chat.pinned ? '📌' : ''}</span>
+                    <span class="chat-time">${timeStr || (chat.pinned ? '📌' : '')}</span>
                 </div>
-                <div class="chat-last-msg">${chat.type === 'private' ? formatStatus(chat.lastSeen, chat.members.find(m => m !== currentUser.id)) : lastMsgText}</div>
+                <div style="display: flex; justify-content: space-between; align-items: center;">
+                    <div class="chat-last-msg">${chat.type === 'private' ? formatStatus(chat.lastSeen, chat.members.find(m => m !== currentUser.id)) : lastMsgText}</div>
+                    ${unreadBadge}
+                </div>
             </div>
         </div>`;
     }).join('');
@@ -794,6 +811,9 @@ async function selectChat(chatId, isTemp = false) {
 
     updatePinPanel();
     renderChatList();
+    
+    // Clear last messages JSON to force immediate reload
+    lastMessagesJson = "";
     loadMessages();
     
     if (messagesInterval) clearInterval(messagesInterval);
@@ -924,6 +944,25 @@ function updateTypingIndicator(typingMap) {
 function notifyNewMessage(msg) {
     const chat = chats.find(c => c.id === msg.chatId);
     notificationSound.play().catch(e => console.log('Sound failed:', e));
+
+    // Native Push Notifications for Capacitor
+    if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
+        window.Capacitor.Plugins.LocalNotifications.schedule({
+            notifications: [
+                {
+                    title: chat ? chat.name : 'Новое сообщение',
+                    body: msg.text || 'Файл',
+                    id: Math.floor(Math.random() * 100000),
+                    schedule: { at: new Date(Date.now() + 100) },
+                    sound: null,
+                    attachments: null,
+                    actionTypeId: "",
+                    extra: { chatId: msg.chatId }
+                }
+            ]
+        });
+    }
+
     if (Notification.permission === 'granted') {
         const n = new Notification(chat ? chat.name : 'Новое сообщение', { 
             body: msg.text || 'Файл',
@@ -939,6 +978,11 @@ function notifyNewMessage(msg) {
 function requestNotificationPermission() {
     if ('Notification' in window && Notification.permission !== 'granted' && Notification.permission !== 'denied') {
         Notification.requestPermission();
+    }
+    
+    // Capacitor Local Notifications Permission
+    if (window.Capacitor && window.Capacitor.Plugins.LocalNotifications) {
+        window.Capacitor.Plugins.LocalNotifications.requestPermissions();
     }
 }
 
@@ -985,8 +1029,8 @@ function renderMessages(messages, userMap = {}) {
 
         return `
         <div class="message ${isOut ? 'out' : 'in'} ${isSelected ? 'selected' : ''}" 
-             data-id="${m.id}" data-sender-id="${m.senderId}" onclick="handleMessageClick(event, '${m.id}')" oncontextmenu="showContextMenu(event, '${m.id}')">
-            <div class="message-avatar" onclick="showUserProfile('${m.senderId}')">${sender.avatar || (sender.name ? sender.name[0] : '?')}</div>
+             data-id="${m.id}" data-sender-id="${m.senderId}" onclick="handleMessageClick(event, '${m.id}')">
+            ${!isOut ? `<div class="message-avatar" onclick="showUserProfile('${m.senderId}')">${sender.avatar || (sender.name ? sender.name[0] : '?')}</div>` : ''}
             <div class="message-content-wrapper">
                 ${!isOut && chat && (chat.type === 'group' || chat.type === 'channel') ? `<div class="message-sender-name" onclick="showUserProfile('${m.senderId}')">${sender.name} ${sender.surname || ''} ${modBadge}${betaBadge}</div>` : ''}
                 <div class="message-bubble">
@@ -994,16 +1038,56 @@ function renderMessages(messages, userMap = {}) {
                     <div class="message-text">
                         ${contentHtml}
                     </div>
-                    <div class="message-time">
-                        ${m.isEdited ? '<i class="fas fa-pencil-alt"></i>' : ''}${new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        ${statusHtml}
-                    </div>
+                </div>
+                <div class="message-time">
+                    ${m.isEdited ? '<i class="fas fa-pencil-alt"></i>' : ''}${new Date(m.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    ${statusHtml}
                 </div>
             </div>
         </div>`
     }).join('');
 
+    // Re-attach long press listeners to new message elements
+    attachMessageListeners();
+
     if (isAtBottom) container.scrollTop = container.scrollHeight;
+}
+
+let pressTimer;
+function attachMessageListeners() {
+    const messages = document.querySelectorAll('.message');
+    messages.forEach(msg => {
+        const id = msg.getAttribute('data-id');
+        
+        // Mouse/Touch events for long press
+        const startPress = (e) => {
+            if (isSelectionMode) return;
+            msg.classList.add('pressing');
+            pressTimer = setTimeout(() => {
+                msg.classList.remove('pressing');
+                showContextMenu(e, id);
+            }, 600);
+        };
+
+        const endPress = () => {
+            clearTimeout(pressTimer);
+            msg.classList.remove('pressing');
+        };
+
+        msg.onmousedown = startPress;
+        msg.ontouchstart = startPress;
+        
+        msg.onmouseup = endPress;
+        msg.onmouseleave = endPress;
+        msg.ontouchend = endPress;
+        msg.ontouchcancel = endPress;
+
+        // Context menu event for desktop
+        msg.oncontextmenu = (e) => {
+            e.preventDefault();
+            showContextMenu(e, id);
+        };
+    });
 }
 
 function handleMessageClick(e, msgId) {
@@ -1032,13 +1116,32 @@ function showContextMenu(e, msgId) {
     contextMenuMsgId = msgId;
     const menu = document.getElementById('context-menu');
     if (!menu) return;
-    
+
+    // Position menu and keep it within screen bounds
+    const menuWidth = 200;
+    const menuHeight = 300; // Approximate max height
+    let x = e.clientX || (e.touches && e.touches[0].clientX);
+    let y = e.clientY || (e.touches && e.touches[0].clientY);
+
+    // Adjust for mobile touches
+    if (!x || !y) {
+        const rect = document.querySelector(`.message[data-id="${msgId}"]`).getBoundingClientRect();
+        x = rect.left + rect.width / 2;
+        y = rect.top + rect.height / 2;
+    }
+
+    if (x + menuWidth > window.innerWidth) x = window.innerWidth - menuWidth - 10;
+    if (y + menuHeight > window.innerHeight) y = window.innerHeight - menuHeight - 10;
+    if (x < 10) x = 10;
+    if (y < 10) y = 10;
+
+    menu.style.left = `${x}px`;
+    menu.style.top = `${y}px`;
     menu.classList.remove('hidden');
-    menu.style.top = `${e.clientY}px`;
-    menu.style.left = `${e.clientX}px`;
-    
-    if (e.clientY + menu.offsetHeight > window.innerHeight) {
-        menu.style.top = `${e.clientY - menu.offsetHeight}px`;
+
+    // Haptic feedback for mobile
+    if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
+        window.Capacitor.Plugins.Haptics.impact({ style: 'MEDIUM' });
     }
     
     const chat = chats.find(c => c.id === activeChatId);
@@ -1288,7 +1391,15 @@ async function sendToServer(body, token) {
     });
     if (res.ok) {
         const msg = await res.json();
-        if (msg.chatId === 'znakAI') setTimeout(loadMessages, 1000);
+        if (msg.chatId === 'znakAI' || activeChatId === 'znakAI') {
+            // Force reload more frequently after AI request to catch response
+            let attempts = 0;
+            const aiCheck = setInterval(() => {
+                loadMessages();
+                attempts++;
+                if (attempts > 10) clearInterval(aiCheck);
+            }, 1000);
+        }
         loadMessages();
     } else {
         const err = await res.json();
@@ -1342,6 +1453,7 @@ function applyUserSettings(user) {
     }
 
     document.body.className = user.theme === 'dark' ? 'dark-theme' : 'light-theme';
+    updateThemeUI(user.theme);
     document.body.classList.add(`font-${user.fontSize || 'medium'}`);
     
     // Update translations on change
@@ -1513,7 +1625,39 @@ async function updateSettings() {
     const lang = elements.langSelect.value;
     const token = localStorage.getItem('token');
     const res = await fetch(`${API_URL}/api/user/me`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, body: JSON.stringify({ theme, fontSize, lang }) });
-    currentUser = await res.json(); applyUserSettings(currentUser);
+    currentUser = await res.json(); 
+    applyUserSettings(currentUser);
+}
+
+function updateThemeUI(theme) {
+    if (theme === 'dark') {
+        document.body.classList.add('dark-theme');
+        document.body.classList.remove('light-theme');
+    } else {
+        document.body.classList.remove('dark-theme');
+        document.body.classList.add('light-theme');
+    }
+    const themeToggleTop = document.getElementById('theme-toggle-top');
+    if (themeToggleTop) {
+        themeToggleTop.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
+    }
+}
+
+async function saveThemeToServer(theme) {
+    if (!currentUser) return;
+    const token = localStorage.getItem('token');
+    try {
+        const res = await fetch(`${API_URL}/api/user/me`, { 
+            method: 'PUT', 
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }, 
+            body: JSON.stringify({ theme }) 
+        });
+        if (res.ok) {
+            currentUser = await res.json();
+        }
+    } catch (e) {
+        console.error('Save theme error:', e);
+    }
 }
 
 async function checkUsername(username) {
@@ -2257,6 +2401,25 @@ function initImageViewer() {
 function initAll() {
     getElements();
     initImageViewer();
+
+    // Theme toggle top icon
+    const themeToggleTop = document.getElementById('theme-toggle-top');
+    if (themeToggleTop) {
+        themeToggleTop.onclick = () => {
+            const newTheme = document.body.classList.contains('dark-theme') ? 'light' : 'dark';
+            updateThemeUI(newTheme);
+            saveThemeToServer(newTheme);
+        };
+    }
+
+    // Global settings button
+    const globalSettingsBtn = document.getElementById('global-settings-btn');
+    if (globalSettingsBtn) {
+        globalSettingsBtn.onclick = () => {
+            const modal = document.getElementById('settings-modal');
+            if (modal) modal.classList.remove('hidden');
+        };
+    }
     
     // Auth and Account listeners
     const sendCodeBtn = document.getElementById('send-code-btn');
@@ -2339,7 +2502,12 @@ function initAll() {
     }
 
     if (elements.drawerOverlay) elements.drawerOverlay.onclick = () => {
-        if (elements.sideDrawer) elements.sideDrawer.classList.add('hidden');
+        if (elements.sideDrawer) {
+        elements.sideDrawer.classList.add('hidden');
+        // Add fast close animation
+        elements.sideDrawer.style.transition = 'none';
+        setTimeout(() => elements.sideDrawer.style.transition = '', 100);
+    }
     };
 
     // Mobile back button
@@ -2348,11 +2516,18 @@ function initAll() {
             e.preventDefault();
             e.stopPropagation();
         }
+        
+        // Haptic feedback
+        if (window.Capacitor && window.Capacitor.Plugins.Haptics) {
+            window.Capacitor.Plugins.Haptics.impact({ style: 'LIGHT' });
+        }
+
         const sidebar = document.querySelector('.sidebar');
         const chatWindow = document.querySelector('.chat-window');
         if (sidebar) sidebar.classList.remove('hidden-mobile');
         if (chatWindow) chatWindow.classList.add('hidden-mobile');
         activeChatId = null;
+        if (messagesInterval) clearInterval(messagesInterval);
     };
 
     const mobileBackBtn = document.getElementById('mobile-back-btn');
@@ -2462,6 +2637,19 @@ function initAll() {
     if (elements.themeToggle) elements.themeToggle.onchange = updateSettings;
     if (elements.fontSizeSelect) elements.fontSizeSelect.onchange = updateSettings;
     if (elements.langSelect) elements.langSelect.onchange = updateSettings;
+
+    // Fast Chat Opening Optimization
+    const chatList = document.getElementById('chat-list');
+    if (chatList) {
+        chatList.onclick = (e) => {
+            const chatItem = e.target.closest('.chat-item');
+            if (chatItem) {
+                // Pre-highlight active state for instant feedback
+                document.querySelectorAll('.chat-item').forEach(i => i.classList.remove('active'));
+                chatItem.classList.add('active');
+            }
+        };
+    }
 
     const editProfileBtn = document.getElementById('edit-profile-btn');
     if (editProfileBtn) {
